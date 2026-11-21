@@ -16,12 +16,12 @@
  *  6. No Mercado Pago: Suas integrações > sua aplicação > Webhooks > Modo produção.
  *     URL: o endereço que testarMercadoPago() mostra no registro (termina em ?mp=1).
  *     Eventos: "Pagamentos" e "Planos e assinaturas". É assim que chegam as cobranças
- *     mensais da Licença Profissional, que liberam as 2 festas de cada mês.
+ *     da Licença Profissional (mensal e anual), que liberam as festas de cada período.
  *
  * Planos:
  *  - Faça Você Mesmo e Feito pra Você: pagamento único (Pix, cartão, boleto).
  *  - Licença Profissional mensal: assinatura no cartão, R$ 199/mês, 2 festas por mês.
- *  - Licença Profissional anual: pagamento único de R$ 1.990, 24 festas.
+ *  - Licença Profissional anual: assinatura no cartão, R$ 1.990 a cada 12 meses, 24 festas por ano.
  *  - Festa adicional (profissional): pagamento único de R$ 79,79, 1 festa.
  * Cada festa é um código de ativação do degrau "pro" (ou "diy" no Faça Você Mesmo).
  * O valor vem da tabela abaixo, nunca da página. Cada pagamento é entregue uma única vez.
@@ -31,12 +31,12 @@ const MP = {
   API: 'https://api.mercadopago.com',
   SITE: 'https://albumdafesta.github.io/',
   DESCRITOR: 'ALBUMDAFESTA',
-  PRIMEIRA_COBRANCA_DIAS: 20,   // cobrança da assinatura até 20 dias após a adesão = 1º mês (já entregue na adesão)
+  PRIMEIRA_COBRANCA_DIAS: 20,   // cobrança da assinatura até 20 dias após a adesão = 1º período (já entregue na adesão)
   PLANOS: {
     'diy':           { nome: 'Álbum Faça Você Mesmo', valor: 39.90, degrau: 'diy', festas: 1 },
     'feito':         { nome: 'Álbum Feito pra Você', valor: 319.15, briefing: true },
     'licenca':       { nome: 'Licença Profissional mensal', valor: 199.00, degrau: 'pro', festas: 2, planoMp: 'd44b5cfe75e844f5a4d8c1c64c955f4b' },
-    'licenca-anual': { nome: 'Licença Profissional anual', valor: 1990.00, degrau: 'pro', festas: 24 },
+    'licenca-anual': { nome: 'Licença Profissional anual', valor: 1990.00, degrau: 'pro', festas: 24, planoMp: '823af99201b24fd88933aab2c71677c4' },
     'adicional':     { nome: 'Festa adicional da Licença Profissional', valor: 79.79, degrau: 'pro', festas: 1 }
   }
 };
@@ -110,7 +110,7 @@ function pagar_(b) {
   };
 }
 
-/* Assinatura mensal no cartão (Licença Profissional), no plano já criado no Mercado Pago */
+/* Assinatura no cartão (Licença Profissional mensal ou anual), nos planos já criados no Mercado Pago */
 function assinar_(b) {
   const plano = MP.PLANOS[b.plano];
   if (!plano || !plano.planoMp) return { ok: false, erro: 'Plano inválido' };
@@ -135,14 +135,14 @@ function assinar_(b) {
     if (ja) return ja;
     // o 1º mês é entregue já na adesão; a 1ª cobrança que chegar pelo webhook não entrega de novo
     const v = { plano: b.plano, email: email, status: r.status, criado: Date.now(), primeiraPendente: true,
-                entrega: entregar_(plano, email), meses: 1 };
+                entrega: entregar_(plano, email), periodos: 1 };
     props.setProperty(k, JSON.stringify(v));
     return v;
   });
   return { ok: true, id: r.id, status: 'approved', entrega: reg.entrega };
 }
 
-/* Cobrança mensal da assinatura: libera as festas do mês quando o pagamento é aprovado */
+/* Cobrança da assinatura (mês ou ano): libera as festas do período quando o pagamento é aprovado */
 function processarCobranca_(id) {
   const ap = mp_('get', '/authorized_payments/' + encodeURIComponent(id));
   if (!ap || !ap.preapproval_id) return null;
@@ -158,7 +158,7 @@ function processarCobranca_(id) {
     const ehPrimeira = as.primeiraPendente && quando - as.criado < MP.PRIMEIRA_COBRANCA_DIAS * 864e5;
     as.primeiraPendente = false;
     let ent = null;
-    if (!ehPrimeira) { ent = entregar_(plano, as.email); as.meses = (as.meses || 1) + 1; as.ultima = ent; }
+    if (!ehPrimeira) { ent = entregar_(plano, as.email); as.periodos = (as.periodos || 1) + 1; as.ultima = ent; }
     props.setProperty(kC, JSON.stringify({ preapproval: ap.preapproval_id, pagamento: ap.payment && ap.payment.id, entregue: !!ent, t: Date.now() }));
     props.setProperty(kA, JSON.stringify(as));
     return as;
@@ -302,6 +302,6 @@ function listarPagamentos() {
   Object.keys(props).filter(function (k) { return /^(PG|AS):/.test(k); }).forEach(function (k) {
     const v = JSON.parse(props[k]);
     const ent = v.ultima || v.entrega;
-    Logger.log([k, v.plano, v.status, v.email, ent ? ((ent.codigos || []).join(' ') || ent.tipo) : '-', v.meses ? v.meses + ' mês(es)' : '', v.alerta || ''].join(' · '));
+    Logger.log([k, v.plano, v.status, v.email, ent ? ((ent.codigos || []).join(' ') || ent.tipo) : '-', v.periodos ? v.periodos + ' período(s) pago(s)' : '', v.alerta || ''].join(' · '));
   });
 }
