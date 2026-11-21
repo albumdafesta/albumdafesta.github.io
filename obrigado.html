@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pagamento · Álbum da Festa</title>
+<meta name="theme-color" content="#fbf8f1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Página de retorno do Mercado Pago (back_urls). Lê ?plano= e ?status= da URL. */
+  :root { --papel:#fbf8f1; --card:#fff; --marinho:#133f6b; --texto:#1b4470; --suave:#587895;
+    --borda:#d7e7f0; --ok:#1f8a5b; --sol:#f6c443; --erro:#c5221f; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px 16px;
+    background:var(--papel); color:var(--texto); font:600 17px/1.5 "Nunito", system-ui, sans-serif; }
+  main { width:100%; max-width:460px; background:var(--card); border:1px solid var(--borda);
+    border-radius:24px; padding:32px 24px; text-align:center; box-shadow:0 10px 30px rgba(19,63,107,.08); }
+  .selo { width:64px; height:64px; border-radius:50%; display:grid; place-items:center; margin:0 auto 16px;
+    font-size:32px; background:#e6f4ec; color:var(--ok); }
+  .selo.espera { background:#fdf4d8; color:#9a6b00; }
+  .selo.falha { background:#fbe4e3; color:var(--erro); }
+  h1 { font:700 28px/1.1 "Fredoka", system-ui, sans-serif; color:var(--marinho); margin:0 0 12px; }
+  p { margin:0 0 12px; }
+  .passos { text-align:left; background:var(--papel); border-radius:16px; padding:16px 16px 4px; margin:20px 0; }
+  .passos li { margin-bottom:10px; }
+  a.botao { display:inline-block; margin-top:8px; padding:14px 22px; border-radius:999px; background:var(--marinho);
+    color:#fff; text-decoration:none; font-weight:700; }
+  small { display:block; margin-top:20px; color:var(--suave); font-weight:500; }
+</style>
+</head>
+<body>
+<main id="caixa" aria-live="polite"></main>
+<script>
+  const q = new URLSearchParams(location.search);
+  const status = (q.get('status') || q.get('collection_status') || 'approved').toLowerCase();
+  const plano = q.get('plano') || '';
+
+  const PLANOS = {
+    diy:      { nome: 'Álbum Faça Você Mesmo',
+                passos: ['Você recebe o código de ativação no e-mail usado na compra.',
+                         'Abra <b>albumdafesta.github.io/#criar</b> no celular.',
+                         'Cole o código, preencha os dados da festa e pronto: o QR do álbum já sai na hora.'] },
+    feito:    { nome: 'Álbum Feito pra Você',
+                passos: ['Você recebe no e-mail usado na compra o link do formulário da festa.',
+                         'Conta pra gente nome, idade, data, tema e cores. Leva uns 5 minutos.',
+                         'A gente monta o álbum e manda o QR e o link do telão.'] },
+    familia:  { nome: 'Assinatura anual da família',
+                passos: ['Você recebe o código da família no e-mail usado na compra.',
+                         'A cada festa, abra <b>albumdafesta.github.io/#criar</b> e use o mesmo código.',
+                         'Vale para todas as festas da família durante 12 meses.'] },
+    licenca:  { nome: 'Licença Profissional',
+                passos: ['Você recebe no e-mail usado na compra as instruções de acesso.',
+                         'A gente combina com você a marca que vai aparecer no telão.',
+                         'Depois é só criar um álbum para cada evento.'] }
+  };
+  const p = PLANOS[plano];
+  const lista = p ? `<ol class="passos">${p.passos.map(t => `<li>${t}</li>`).join('')}</ol>` : '';
+  const caixa = document.getElementById('caixa');
+
+  if (status === 'approved') {
+    caixa.innerHTML = `<div class="selo" aria-hidden="true">✓</div>
+      <h1>Pagamento aprovado!</h1>
+      <p>${p ? `Seu <b>${p.nome}</b> está garantido.` : 'Sua compra está garantida.'} Agora é só seguir:</p>
+      ${lista}
+      <small>Não chegou nada? Olhe a caixa de spam ou responda o e-mail do Mercado Pago.</small>`;
+  } else if (status === 'pending' || status === 'in_process') {
+    caixa.innerHTML = `<div class="selo espera" aria-hidden="true">⏳</div>
+      <h1>Falta só confirmar</h1>
+      <p>Seu pagamento ainda está em análise. Pix costuma confirmar em minutos; boleto pode levar até 3 dias úteis.</p>
+      <p>Assim que confirmar, você recebe tudo no e-mail usado na compra.</p>
+      ${lista}`;
+  } else {
+    caixa.innerHTML = `<div class="selo falha" aria-hidden="true">!</div>
+      <h1>O pagamento não passou</h1>
+      <p>Nenhum valor foi cobrado. Dá pra tentar de novo com outro cartão ou com Pix.</p>
+      <a class="botao" href="javascript:history.back()">Tentar de novo</a>`;
+  }
+</script>
+</body>
+</html>

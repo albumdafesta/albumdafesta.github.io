@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Comprar · Álbum da Festa</title>
+<meta name="description" content="Escolha o seu Álbum da Festa e pague por Pix, cartão ou boleto.">
+<meta name="theme-color" content="#fbf8f1">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<style>
+  /* Checkout do Álbum da Festa com Mercado Pago Bricks.
+     Pagamento único: Payment Brick (Pix, cartão, boleto). Assinatura: Card Payment Brick.
+     O valor cobrado é decidido no back-end (Pagamentos.gs), nunca nesta página. */
+  :root { --papel:#fbf8f1; --card:#fff; --marinho:#133f6b; --texto:#1b4470; --suave:#587895;
+    --borda:#d7e7f0; --ok:#1f8a5b; --erro:#c5221f; --sol:#f6c443; --destaque:#C2410C; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--papel); color:var(--texto); font:600 16px/1.5 "Nunito", system-ui, sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:24px 16px 48px; }
+  h1, h2 { font-family:"Fredoka", system-ui, sans-serif; color:var(--marinho); line-height:1.1; margin:0; }
+  h1 { font-size:30px; margin:4px 0 8px; }
+  h2 { font-size:22px; margin-bottom:8px; }
+  .marca { font:700 14px "Fredoka", sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--destaque); text-decoration:none; }
+  .sub { color:var(--suave); margin:0 0 20px; }
+  .planos { display:grid; gap:10px; margin-bottom:20px; }
+  .plano { display:flex; gap:12px; align-items:flex-start; background:var(--card); border:2px solid var(--borda);
+    border-radius:18px; padding:14px 16px; cursor:pointer; }
+  .plano:has(input:checked) { border-color:var(--marinho); box-shadow:0 6px 18px rgba(19,63,107,.10); }
+  .plano input { margin:4px 0 0; accent-color:var(--marinho); width:18px; height:18px; flex:none; }
+  .plano b { display:block; color:var(--marinho); font-size:17px; }
+  .plano small { display:block; color:var(--suave); font-weight:500; line-height:1.4; margin-top:2px; }
+  .preco { margin-left:auto; text-align:right; white-space:nowrap; font:700 18px "Fredoka", sans-serif; color:var(--marinho); }
+  .preco s { display:block; font:500 13px "Nunito", sans-serif; color:var(--suave); }
+  .preco em { display:block; font:600 12px "Nunito", sans-serif; font-style:normal; color:var(--suave); }
+  .caixa { background:var(--card); border:1px solid var(--borda); border-radius:20px; padding:20px 16px; }
+  #brick { min-height:120px; }
+  .carregando { color:var(--suave); text-align:center; padding:32px 0; }
+  .aviso { background:#fdf4d8; border-radius:14px; padding:12px 14px; margin-bottom:16px; }
+  .aviso.erro { background:#fbe4e3; color:var(--erro); }
+  .selo { width:60px; height:60px; border-radius:50%; display:grid; place-items:center; margin:0 auto 12px; font-size:30px;
+    background:#e6f4ec; color:var(--ok); }
+  .selo.espera { background:#fdf4d8; color:#9a6b00; }
+  .selo.falha { background:#fbe4e3; color:var(--erro); }
+  .centro { text-align:center; }
+  .codigo { font:700 28px "Fredoka", monospace; letter-spacing:.06em; color:var(--marinho); background:var(--papel);
+    border:2px dashed var(--borda); border-radius:14px; padding:12px; margin:12px 0; user-select:all; word-break:break-all; }
+  .codigo.lista { font-size:18px; line-height:1.7; max-height:280px; overflow:auto; }
+  .pix img { width:220px; height:220px; max-width:100%; display:block; margin:8px auto; image-rendering:pixelated; }
+  .pix textarea { width:100%; height:72px; font:500 12px monospace; border:1px solid var(--borda); border-radius:10px; padding:8px; resize:none; }
+  .botao { display:inline-block; border:0; cursor:pointer; margin-top:10px; padding:14px 22px; border-radius:999px;
+    background:var(--marinho); color:#fff; font:700 16px "Nunito", sans-serif; text-decoration:none; }
+  .botao.sec { background:transparent; color:var(--marinho); border:2px solid var(--marinho); }
+  ol.passos { text-align:left; background:var(--papel); border-radius:14px; padding:14px 14px 4px 34px; }
+  ol.passos li { margin-bottom:8px; }
+  .rodape { margin-top:24px; font-size:13px; font-weight:500; color:var(--suave); text-align:center; }
+</style>
+</head>
+<body>
+<main>
+  <a class="marca" href="./">Álbum da Festa</a>
+  <h1>Escolha o seu álbum</h1>
+  <p class="sub">Pague por Pix, cartão ou boleto sem sair desta página. Telão, música e vídeo da família estão em todos os planos.</p>
+
+  <form class="planos" id="planos" aria-label="Planos"></form>
+
+  <section class="caixa" id="pagar" aria-live="polite">
+    <div id="aviso"></div>
+    <div id="brick"><p class="carregando">Carregando o pagamento…</p></div>
+  </section>
+
+  <section class="caixa centro" id="resultado" hidden aria-live="polite"></section>
+
+  <p class="rodape">Pagamento processado pelo Mercado Pago. Os dados do cartão vão direto para o Mercado Pago e não passam pelo Álbum da Festa.<br>
+    <a href="termos-e-privacidade.md">Termos e privacidade</a></p>
+</main>
+
+<script>
+/* ======================= configuração ======================= */
+const PUBLIC_KEY = 'APP_USR-e93e594c-d6a6-4f06-bc85-f013b7d37e71';   // Public Key de produção do Mercado Pago (APP_USR-...): é pública, pode ficar aqui
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzr7Nz1CPeU5jg6hmflbnpWBEP2q7LOzSv4JtLEfXXTNI5T3wmpGPVclqWxBMPstyT2/exec';
+const SITE = 'https://albumdafesta.github.io/';
+
+// Só para mostrar na tela. O valor cobrado de verdade é o do back-end (Pagamentos.gs).
+// pro: true = vitrine dos profissionais (comprar.html?pro=1); o resto é a vitrine das famílias.
+const PLANOS = {
+  'diy':           { nome: 'Faça Você Mesmo', valor: 39.90, de: 79.79, por: 'por festa',
+                     resumo: 'Vocês montam pelo celular em poucos minutos. 30 dias de envio, 90 dias no ar.' },
+  'feito':         { nome: 'Feito pra Você', valor: 319.15, por: 'por festa',
+                     resumo: 'A gente monta no tema da festa, com papelaria para imprimir. 90 dias de envio, 365 no ar.' },
+  'licenca':       { nome: 'Licença mensal', valor: 199, por: 'por mês', assinatura: true, pro: true,
+                     resumo: '2 festas por mês (R$ 99,50 por festa). Cobrança mensal no cartão.' },
+  'licenca-anual': { nome: 'Licença anual', valor: 1990, por: 'por ano', pro: true,
+                     resumo: '24 festas no ano (R$ 82,92 por festa). Pagamento único: Pix, cartão em até 12x ou boleto.' },
+  'adicional':     { nome: 'Festa adicional', valor: 79.79, por: 'por festa', pro: true,
+                     resumo: 'Para quem já tem a licença e precisa de mais uma festa além das incluídas.' }
+};
+
+/* ======================= tela ======================= */
+const $ = s => document.querySelector(s);
+const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const q = new URLSearchParams(location.search);
+let plano = PLANOS[q.get('plano')] ? q.get('plano') : (q.has('pro') ? 'licenca' : 'diy');
+const PRO = !!PLANOS[plano].pro;
+if (PRO) {
+  document.title = 'Licença Profissional · Álbum da Festa';
+  $('h1').textContent = 'Licença Profissional';
+  $('.sub').textContent = 'Para quem trabalha com festas oferecer o álbum às famílias que atende. Telão, música e vídeo da família em todas as festas.';
+}
+
+function desenharPlanos() {
+  $('#planos').innerHTML = Object.entries(PLANOS)
+    .filter(([, p]) => !!p.pro === PRO)
+    .map(([id, p]) => `<label class="plano">
+      <input type="radio" name="plano" value="${id}" ${id === plano ? 'checked' : ''}>
+      <span><b>${p.nome}</b><small>${p.resumo}</small></span>
+      <span class="preco">${p.de ? `<s>${brl(p.de)}</s>` : ''}${brl(p.valor)}<em>${p.por}</em></span></label>`).join('');
+}
+$('#planos').addEventListener('change', e => {
+  plano = e.target.value;
+  history.replaceState(null, '', '?plano=' + plano);
+  montar();
+});
+
+function aviso(msg, erro) { $('#aviso').innerHTML = msg ? `<div class="aviso${erro ? ' erro' : ''}">${msg}</div>` : ''; }
+
+/* ======================= Bricks ======================= */
+let bricks = null, ctrl = null, montando = Promise.resolve();
+
+function montar() {
+  montando = montando.then(montarAgora, montarAgora);
+  return montando;
+}
+async function montarAgora() {
+  $('#resultado').hidden = true; $('#pagar').hidden = false; $('#planos').hidden = false;
+  aviso('');
+  if (ctrl) { try { await ctrl.unmount(); } catch {} ctrl = null; }
+  $('#brick').innerHTML = '<p class="carregando">Carregando o pagamento…</p>';
+  if (!PUBLIC_KEY || typeof MercadoPago === 'undefined') {
+    $('#brick').innerHTML = '';
+    return aviso(PUBLIC_KEY ? 'Não foi possível carregar o pagamento. Confira a internet e recarregue a página.'
+                            : 'Pagamento em configuração. Volte daqui a pouco.', true);
+  }
+  bricks = bricks || new MercadoPago(PUBLIC_KEY, { locale: 'pt-BR' }).bricks();
+  const p = PLANOS[plano];
+  const chave = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();   // evita cobrança dupla
+  $('#brick').innerHTML = '';
+  const callbacks = {
+    onReady() {},
+    onError(err) { console.warn(err); },
+    onSubmit(dados) {
+      const formData = dados.formData || dados;   // Payment Brick manda { formData }, Card Payment manda o formData
+      return enviar(p.assinatura ? 'assinar' : 'pagar', formData, chave);
+    }
+  };
+  ctrl = p.assinatura
+    ? await bricks.create('cardPayment', 'brick', {
+        initialization: { amount: p.valor },
+        customization: { paymentMethods: { maxInstallments: 1 } },
+        callbacks })
+    : await bricks.create('payment', 'brick', {
+        initialization: { amount: p.valor },
+        customization: { paymentMethods: { bankTransfer: 'all', creditCard: 'all', debitCard: 'all', ticket: 'all', maxInstallments: 12 } },
+        callbacks });
+}
+
+async function api(corpo) {
+  // text/plain evita a checagem prévia de CORS que o Apps Script não responde
+  const r = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(corpo) });
+  return r.json();
+}
+
+async function enviar(acao, formData, chave) {
+  aviso('');
+  let r;
+  try { r = await api({ acao, plano, formData, chave }); }
+  catch { aviso('Sem conexão agora. Nada foi cobrado. Tente de novo.', true); throw new Error('rede'); }
+  if (!r.ok) { aviso(esc(r.erro || 'O pagamento não passou.') + ' Nada foi cobrado.', true); throw new Error(r.erro); }
+  mostrar(r);
+}
+
+/* ======================= resultado ======================= */
+let espera = null;
+
+function entregaHtml(ent) {
+  if (!ent) return '<p>Você recebe tudo no e-mail usado na compra.</p>';
+  if (ent.tipo === 'briefing') return `<p>Agora é com a gente. Conte como é a festa e a gente monta o álbum.</p>
+    <a class="botao" href="${SITE}#briefing">Responder o formulário da festa</a>
+    <p class="rodape">O link também foi para o seu e-mail. No campo "Nome ou e-mail usado na compra", use o mesmo e-mail do pagamento.</p>`;
+  const cods = ent.codigos && ent.codigos.length ? ent.codigos : [ent.codigo];
+  if (cods.length > 1) return `<p>Estes são os seus <b>${cods.length} códigos</b>. Cada um cria uma festa:</p>
+    <div class="codigo lista">${cods.map(esc).join('<br>')}</div>
+    <button type="button" class="botao sec" data-copiar="${esc(cods.join('\n'))}">Copiar todos</button>
+    <ol class="passos"><li>Abra o criador do álbum no celular.</li><li>Preencha os dados da festa.</li><li>No último passo, cole um dos códigos.</li></ol>
+    <a class="botao" href="${SITE}#criar">Criar a primeira festa</a>
+    <p class="rodape">Os códigos também foram para o seu e-mail. Guarde: cada um vale uma festa.</p>`;
+  return `<p>Este é o seu código de ativação:</p>
+    <div class="codigo">${esc(cods[0])}</div>
+    <button type="button" class="botao sec" data-copiar="${esc(cods[0])}">Copiar código</button>
+    <ol class="passos"><li>Abra o criador do álbum no celular.</li><li>Preencha os dados da festa.</li><li>No último passo, cole o código.</li></ol>
+    <a class="botao" href="${SITE}#criar">Criar meu álbum agora</a>
+    <p class="rodape">O código também foi para o seu e-mail. Guarde: é com ele que a festa é criada.</p>`;
+}
+
+function mostrar(r) {
+  const res = $('#resultado');
+  $('#pagar').hidden = true; $('#planos').hidden = true; res.hidden = false;
+  clearTimeout(espera);
+  const nome = PLANOS[plano].nome;
+  if (r.status === 'approved' || r.status === 'authorized') {
+    res.innerHTML = `<div class="selo" aria-hidden="true">✓</div><h2>Pagamento aprovado!</h2>
+      <p>Compra confirmada: <b>${esc(nome)}</b>.</p>${entregaHtml(r.entrega)}`;
+  } else if (r.pix) {
+    res.innerHTML = `<div class="selo espera" aria-hidden="true">⏳</div><h2>Pague com Pix</h2>
+      <p>Abra o app do seu banco, escolha Pix e leia o QR code ou use o copia e cola.</p>
+      <div class="pix">${r.pix.imagem ? `<img alt="QR code do Pix" src="data:image/png;base64,${esc(r.pix.imagem)}">` : ''}
+        <textarea readonly aria-label="Pix copia e cola">${esc(r.pix.codigo)}</textarea></div>
+      <button type="button" class="botao sec" data-copiar="${esc(r.pix.codigo)}">Copiar código Pix</button>
+      <p class="rodape" id="esperando">Esperando a confirmação do Pix. Esta tela atualiza sozinha.</p>`;
+    acompanhar(r.id, r.recibo, Date.now());
+  } else if (r.boleto) {
+    res.innerHTML = `<div class="selo espera" aria-hidden="true">🧾</div><h2>Boleto gerado</h2>
+      <p>O boleto pode levar até 3 dias úteis para compensar. Assim que compensar, tudo chega no seu e-mail.</p>
+      <a class="botao" href="${esc(r.boleto)}" target="_blank" rel="noopener">Abrir o boleto</a>`;
+  } else if (r.status === 'in_process' || r.status === 'pending') {
+    res.innerHTML = `<div class="selo espera" aria-hidden="true">⏳</div><h2>Pagamento em análise</h2>
+      <p>O Mercado Pago está conferindo o pagamento. Costuma levar poucos minutos; quando aprovar, tudo chega no seu e-mail.</p>`;
+    if (r.recibo) acompanhar(r.id, r.recibo, Date.now());
+  } else {
+    res.innerHTML = `<div class="selo falha" aria-hidden="true">!</div><h2>O pagamento não passou</h2>
+      <p>${esc(motivo(r.detalhe))} Nenhum valor foi cobrado.</p>
+      <button type="button" class="botao" data-de-novo>Tentar de novo</button>`;
+  }
+  res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function motivo(d) {
+  return ({
+    cc_rejected_insufficient_amount: 'O cartão não tem limite suficiente.',
+    cc_rejected_bad_filled_security_code: 'O código de segurança do cartão não confere.',
+    cc_rejected_bad_filled_date: 'A validade do cartão não confere.',
+    cc_rejected_bad_filled_other: 'Algum dado do cartão não confere.',
+    cc_rejected_call_for_authorize: 'O banco pediu para você autorizar a compra. Ligue para o banco e tente de novo.',
+    cc_rejected_card_disabled: 'O cartão está bloqueado para compras online.',
+    cc_rejected_duplicated_payment: 'Você já fez um pagamento igual há pouco.',
+    cc_rejected_high_risk: 'O pagamento foi recusado pela análise de segurança. Tente com Pix.'
+  })[d] || 'O banco recusou o pagamento. Tente outro cartão ou pague com Pix.';
+}
+
+// Pix: confere a cada 5 s por até 30 min
+async function acompanhar(id, recibo, inicio) {
+  if (Date.now() - inicio > 30 * 60 * 1000) {
+    const e = $('#esperando'); if (e) e.textContent = 'Já pagou? Assim que o Pix for confirmado, tudo chega no seu e-mail.';
+    return;
+  }
+  try {
+    const r = await api({ acao: 'status-pagamento', id, recibo });
+    if (r.ok && r.status === 'approved') return mostrar(r);
+    if (r.ok && /rejected|cancelled/.test(r.status)) return mostrar(r);
+  } catch {}
+  espera = setTimeout(() => acompanhar(id, recibo, inicio), 5000);
+}
+
+document.addEventListener('click', async e => {
+  const c = e.target.closest('[data-copiar]');
+  if (c) { try { await navigator.clipboard.writeText(c.dataset.copiar); c.textContent = 'Copiado!'; } catch {} }
+  if (e.target.closest('[data-de-novo]')) montar();
+});
+
+desenharPlanos();
+montar();
+</script>
+</body>
+</html>
