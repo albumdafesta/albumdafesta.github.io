@@ -48,6 +48,7 @@
   .centro { text-align:center; }
   .codigo { font:700 28px "Fredoka", monospace; letter-spacing:.06em; color:var(--marinho); background:var(--papel);
     border:2px dashed var(--borda); border-radius:14px; padding:12px; margin:12px 0; user-select:all; word-break:break-all; }
+  .codigo.lista { font-size:18px; line-height:1.7; max-height:280px; overflow:auto; }
   .pix img { width:220px; height:220px; max-width:100%; display:block; margin:8px auto; image-rendering:pixelated; }
   .pix textarea { width:100%; height:72px; font:500 12px monospace; border:1px solid var(--borda); border-radius:10px; padding:8px; resize:none; }
   .botao { display:inline-block; border:0; cursor:pointer; margin-top:10px; padding:14px 22px; border-radius:999px;
@@ -84,15 +85,18 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzr7Nz1CPeU5jg6hmflb
 const SITE = 'https://albumdafesta.github.io/';
 
 // Só para mostrar na tela. O valor cobrado de verdade é o do back-end (Pagamentos.gs).
+// pro: true = vitrine dos profissionais (comprar.html?pro=1); o resto é a vitrine das famílias.
 const PLANOS = {
-  diy:     { nome: 'Faça Você Mesmo', valor: 39.90, de: 79.79, por: 'por festa',
-             resumo: 'Vocês montam pelo celular em poucos minutos. 30 dias de envio, 90 dias no ar.' },
-  feito:   { nome: 'Feito pra Você', valor: 319.15, por: 'por festa',
-             resumo: 'A gente monta no tema da festa, com papelaria para imprimir. 90 dias de envio, 365 no ar.' },
-  familia: { nome: 'Assinatura da família', valor: 638.30, por: 'por ano', assinatura: true,
-             resumo: 'Festas ilimitadas por 12 meses. Cobrança anual no cartão.' },
-  licenca: { nome: 'Licença Profissional', valor: 638.30, por: 'por mês', assinatura: true, oculto: true,
-             resumo: 'Para quem trabalha com festas oferecer o álbum às famílias. Cobrança mensal no cartão.' }
+  'diy':           { nome: 'Faça Você Mesmo', valor: 39.90, de: 79.79, por: 'por festa',
+                     resumo: 'Vocês montam pelo celular em poucos minutos. 30 dias de envio, 90 dias no ar.' },
+  'feito':         { nome: 'Feito pra Você', valor: 319.15, por: 'por festa',
+                     resumo: 'A gente monta no tema da festa, com papelaria para imprimir. 90 dias de envio, 365 no ar.' },
+  'licenca':       { nome: 'Licença mensal', valor: 199, por: 'por mês', assinatura: true, pro: true,
+                     resumo: '2 festas por mês (R$ 99,50 por festa). Cobrança mensal no cartão.' },
+  'licenca-anual': { nome: 'Licença anual', valor: 1990, por: 'por ano', pro: true,
+                     resumo: '24 festas no ano (R$ 82,92 por festa). Pagamento único: Pix, cartão em até 12x ou boleto.' },
+  'adicional':     { nome: 'Festa adicional', valor: 79.79, por: 'por festa', pro: true,
+                     resumo: 'Para quem já tem a licença e precisa de mais uma festa além das incluídas.' }
 };
 
 /* ======================= tela ======================= */
@@ -100,11 +104,17 @@ const $ = s => document.querySelector(s);
 const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const q = new URLSearchParams(location.search);
-let plano = PLANOS[q.get('plano')] ? q.get('plano') : 'diy';
+let plano = PLANOS[q.get('plano')] ? q.get('plano') : (q.has('pro') ? 'licenca' : 'diy');
+const PRO = !!PLANOS[plano].pro;
+if (PRO) {
+  document.title = 'Licença Profissional · Álbum da Festa';
+  $('h1').textContent = 'Licença Profissional';
+  $('.sub').textContent = 'Para quem trabalha com festas oferecer o álbum às famílias que atende. Telão, música e vídeo da família em todas as festas.';
+}
 
 function desenharPlanos() {
   $('#planos').innerHTML = Object.entries(PLANOS)
-    .filter(([id, p]) => !p.oculto || id === plano)
+    .filter(([, p]) => !!p.pro === PRO)
     .map(([id, p]) => `<label class="plano">
       <input type="radio" name="plano" value="${id}" ${id === plano ? 'checked' : ''}>
       <span><b>${p.nome}</b><small>${p.resumo}</small></span>
@@ -181,9 +191,16 @@ function entregaHtml(ent) {
   if (ent.tipo === 'briefing') return `<p>Agora é com a gente. Conte como é a festa e a gente monta o álbum.</p>
     <a class="botao" href="${SITE}#briefing">Responder o formulário da festa</a>
     <p class="rodape">O link também foi para o seu e-mail. No campo "Nome ou e-mail usado na compra", use o mesmo e-mail do pagamento.</p>`;
+  const cods = ent.codigos && ent.codigos.length ? ent.codigos : [ent.codigo];
+  if (cods.length > 1) return `<p>Estes são os seus <b>${cods.length} códigos</b>. Cada um cria uma festa:</p>
+    <div class="codigo lista">${cods.map(esc).join('<br>')}</div>
+    <button type="button" class="botao sec" data-copiar="${esc(cods.join('\n'))}">Copiar todos</button>
+    <ol class="passos"><li>Abra o criador do álbum no celular.</li><li>Preencha os dados da festa.</li><li>No último passo, cole um dos códigos.</li></ol>
+    <a class="botao" href="${SITE}#criar">Criar a primeira festa</a>
+    <p class="rodape">Os códigos também foram para o seu e-mail. Guarde: cada um vale uma festa.</p>`;
   return `<p>Este é o seu código de ativação:</p>
-    <div class="codigo">${esc(ent.codigo)}</div>
-    <button type="button" class="botao sec" data-copiar="${esc(ent.codigo)}">Copiar código</button>
+    <div class="codigo">${esc(cods[0])}</div>
+    <button type="button" class="botao sec" data-copiar="${esc(cods[0])}">Copiar código</button>
     <ol class="passos"><li>Abra o criador do álbum no celular.</li><li>Preencha os dados da festa.</li><li>No último passo, cole o código.</li></ol>
     <a class="botao" href="${SITE}#criar">Criar meu álbum agora</a>
     <p class="rodape">O código também foi para o seu e-mail. Guarde: é com ele que a festa é criada.</p>`;
@@ -196,7 +213,7 @@ function mostrar(r) {
   const nome = PLANOS[plano].nome;
   if (r.status === 'approved' || r.status === 'authorized') {
     res.innerHTML = `<div class="selo" aria-hidden="true">✓</div><h2>Pagamento aprovado!</h2>
-      <p>Seu <b>${esc(nome)}</b> está garantido.</p>${entregaHtml(r.entrega)}`;
+      <p>Compra confirmada: <b>${esc(nome)}</b>.</p>${entregaHtml(r.entrega)}`;
   } else if (r.pix) {
     res.innerHTML = `<div class="selo espera" aria-hidden="true">⏳</div><h2>Pague com Pix</h2>
       <p>Abra o app do seu banco, escolha Pix e leia o QR code ou use o copia e cola.</p>
