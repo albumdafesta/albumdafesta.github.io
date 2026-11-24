@@ -13,10 +13,11 @@
  *  4. Rode testarMercadoPago() pelo editor e autorize o acesso a serviços externos.
  *  5. Implantar > Gerenciar implantações > lápis > Versão: Nova versão > Implantar.
  *     (editar a implantação existente mantém o mesmo endereço /exec que o app já usa)
- *  6. No Mercado Pago: Suas integrações > sua aplicação > Webhooks > Modo produção.
- *     URL: o endereço que testarMercadoPago() mostra no registro (termina em ?mp=1).
- *     Eventos: "Pagamentos" e "Planos e assinaturas". É assim que chegam as cobranças
- *     da Licença Profissional (mensal e anual), que liberam as festas de cada período.
+ *  6. Rode ativarConferencia() uma vez pelo editor. Ela liga dois gatilhos: a cada 15 minutos confere
+ *     os Pix e boletos pendentes; a cada 6 horas confere as cobranças das assinaturas, que liberam
+ *     as festas de cada mês (licença mensal) ou ano (licença anual).
+ *     NÃO cadastre webhook no Mercado Pago: o Apps Script responde com redirecionamento (302) e o
+ *     painel trata isso como erro. A conferência por gatilho dispensa o webhook.
  *
  * Planos:
  *  - Faça Você Mesmo e Feito pra Você: pagamento único (Pix, cartão, boleto).
@@ -86,7 +87,6 @@ function pagar_(b) {
     payer: Object.assign({}, payer, { email: email }),
     external_reference: b.plano + ':' + recibo.slice(0, 8),
     statement_descriptor: MP.DESCRITOR,
-    notification_url: ScriptApp.getService().getUrl() + '?mp=1',
     metadata: { plano: b.plano }
   };
   if (f.token) {
@@ -293,7 +293,7 @@ function mp_(metodo, caminho, corpo, idem) {
 function testarMercadoPago() {
   const r = mp_('get', '/v1/payment_methods');
   Logger.log(Array.isArray(r) ? 'Token ok: ' + r.length + ' formas de pagamento disponíveis' : 'Falhou: ' + JSON.stringify(r).slice(0, 300));
-  Logger.log('URL do webhook (cole no Mercado Pago): ' + ScriptApp.getService().getUrl() + '?mp=1');
+  Logger.log('Agora rode ativarConferencia() uma vez para ligar a conferência automática de Pix e assinaturas.');
 }
 
 // Lista os pagamentos e assinaturas recebidos pelo site e o que foi entregue.
@@ -304,4 +304,42 @@ function listarPagamentos() {
     const ent = v.ultima || v.entrega;
     Logger.log([k, v.plano, v.status, v.email, ent ? ((ent.codigos || []).join(' ') || ent.tipo) : '-', v.periodos ? v.periodos + ' período(s) pago(s)' : '', v.alerta || ''].join(' · '));
   });
+}
+
+/* ===== conferência automática (no lugar do webhook) ===== */
+
+// Pix e boletos que ficaram pendentes (cliente fechou a página antes de pagar): confere no Mercado Pago.
+function conferirPagamentos() {
+  const todos = PropertiesService.getScriptProperties().getProperties();
+  const agora = Date.now();
+  Object.keys(todos).filter(function (k) { return /^PG:/.test(k); }).forEach(function (k) {
+    try {
+      const v = JSON.parse(todos[k]);
+      const pendente = v.status === 'pending' || v.status === 'in_process';
+      if (pendente && agora - (v.criado || 0) < 5 * 864e5) processarPagamento_(k.slice(3));   // boleto vale até 3 dias úteis
+    } catch (err) { Logger.log('conferirPagamentos ' + k + ': ' + err); }
+  });
+}
+
+// Cobranças das assinaturas: cada cobrança aprovada libera as festas do período, uma única vez.
+function conferirAssinaturas() {
+  const todos = PropertiesService.getScriptProperties().getProperties();
+  Object.keys(todos).filter(function (k) { return /^AS:/.test(k); }).forEach(function (k) {
+    try {
+      const r = mp_('get', '/authorized_payments/search?preapproval_id=' + encodeURIComponent(k.slice(3)));
+      (r.results || []).forEach(function (ap) {
+        if (!todos['AP:' + ap.id]) processarCobranca_(String(ap.id));   // já entregue: pula
+      });
+    } catch (err) { Logger.log('conferirAssinaturas ' + k + ': ' + err); }
+  });
+}
+
+// Rodar uma vez pelo editor. Pode rodar de novo sem duplicar os gatilhos.
+function ativarConferencia() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (/^conferir(Pagamentos|Assinaturas)$/.test(t.getHandlerFunction())) ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('conferirPagamentos').timeBased().everyMinutes(15).create();
+  ScriptApp.newTrigger('conferirAssinaturas').timeBased().everyHours(6).create();
+  Logger.log('Conferência ligada: Pix e boletos a cada 15 minutos, assinaturas a cada 6 horas.');
 }
