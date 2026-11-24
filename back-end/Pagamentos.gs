@@ -35,8 +35,8 @@ const MP = {
   PLANOS: {
     'diy':           { nome: 'Álbum Faça Você Mesmo', valor: 39.90, degrau: 'diy', festas: 1 },
     'feito':         { nome: 'Álbum Feito pra Você', valor: 319.15, briefing: true },
-    'licenca':       { nome: 'Licença Profissional mensal', valor: 199.00, degrau: 'pro', festas: 4, planoMp: 'd44b5cfe75e844f5a4d8c1c64c955f4b' },
-    'licenca-anual': { nome: 'Licença Profissional anual', valor: 1990.00, degrau: 'pro', festas: 48, planoMp: '823af99201b24fd88933aab2c71677c4' },
+    'licenca':       { nome: 'Licença Profissional mensal', valor: 199.00, degrau: 'pro', festas: 4, planoMp: '1185667417654775aa692cb0336d3a8e' },
+    'licenca-anual': { nome: 'Licença Profissional anual', valor: 1990.00, degrau: 'pro', festas: 48, planoMp: 'efa724186b7a46ee91d45b438353960c' },
     'adicional':     { nome: 'Festa adicional da Licença Profissional', valor: 79.79, degrau: 'pro', festas: 1 }
   }
 };
