@@ -97,7 +97,7 @@ function pagar_(b) {
   if (f.transaction_details) corpo.transaction_details = f.transaction_details;
 
   const r = mp_('post', '/v1/payments', corpo, limpar_(b.chave, 64) || recibo);
-  if (!r || !r.id) return { ok: false, erro: 'O Mercado Pago recusou os dados do pagamento' };
+  if (!r || !r.id) return { ok: false, erro: 'O Mercado Pago recusou os dados do pagamento', diag: diagMp_(r) };
 
   salvarPg_(String(r.id), { plano: b.plano, email: email, recibo: hash_(recibo), criado: Date.now() });
   const reg = processarPagamento_(String(r.id), r) || {};
@@ -125,7 +125,7 @@ function assinar_(b) {
     status: 'authorized',
     external_reference: b.plano + ':' + Utilities.getUuid().slice(0, 8)
   }, limpar_(b.chave, 64));
-  if (!r || !r.id) return { ok: false, erro: 'O cartão não foi aceito para assinatura. Tente outro cartão.' };
+  if (!r || !r.id) return { ok: false, erro: 'O cartão não foi aceito para assinatura. Tente outro cartão.', diag: diagMp_(r) };
   if (r.status !== 'authorized') return { ok: true, id: r.id, status: 'rejected' };
 
   const props = PropertiesService.getScriptProperties();
@@ -271,6 +271,13 @@ function avisarDono_(assunto, texto) {
   if (props.getProperty('AVISO:' + assunto) === hoje) return;   // no máximo um por dia
   try { MailApp.sendEmail(Session.getEffectiveUser().getEmail(), '[Álbum da Festa] ' + assunto, texto); } catch (x) {}
   props.setProperty('AVISO:' + assunto, hoje);
+}
+
+/* Resumo curto do erro do Mercado Pago (aparece em letra pequena na página, para achar a causa) */
+function diagMp_(r) {
+  r = r || {};
+  const c = (r.cause && r.cause[0]) || {};
+  return [r.status, r.error, r.message, c.code ? 'causa ' + c.code : '', c.description].filter(Boolean).join(' · ').slice(0, 200);
 }
 
 function mp_(metodo, caminho, corpo, idem) {

@@ -181,7 +181,7 @@ async function enviar(acao, formData, chave) {
   let r;
   try { r = await api({ acao, plano, formData, chave }); }
   catch { aviso('Sem conexão agora. Nada foi cobrado. Tente de novo.', true); throw new Error('rede'); }
-  if (!r.ok) { aviso(esc(r.erro || 'O pagamento não passou.') + ' Nada foi cobrado.', true); throw new Error(r.erro); }
+  if (!r.ok) { aviso(esc(r.erro || 'O pagamento não passou.') + ' Nada foi cobrado.' + (r.diag ? '<br><small>Detalhe técnico: ' + esc(r.diag) + '</small>' : ''), true); throw new Error(r.erro); }
   mostrar(r);
 }
 
