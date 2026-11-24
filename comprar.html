@@ -50,6 +50,14 @@
   .centro { text-align:center; }
   .codigo { font:700 28px "Fredoka", monospace; letter-spacing:.06em; color:var(--marinho); background:var(--papel);
     border:2px dashed var(--borda); border-radius:14px; padding:12px; margin:12px 0; user-select:all; word-break:break-all; }
+  .cupom { margin:-8px 0 16px; }
+  .cupom summary { cursor:pointer; color:var(--suave); font-weight:700; }
+  .cupomLinha { display:flex; gap:8px; margin-top:10px; align-items:center; }
+  .cupomLinha .botao { margin-top:0; padding:11px 18px; }
+  .cupomLinha input, .campo { flex:1; width:100%; font:600 16px "Nunito", sans-serif; padding:12px 14px; border:2px solid var(--borda);
+    border-radius:12px; background:var(--card); color:var(--texto); text-transform:uppercase; }
+  .campo { text-transform:none; margin:8px 0; }
+  .cupom .sub { margin:8px 0 0; font-size:14px; }
   .codigo.lista { font-size:18px; line-height:1.7; max-height:280px; overflow:auto; }
   .pix img { width:220px; height:220px; max-width:100%; display:block; margin:8px auto; image-rendering:pixelated; }
   .pix textarea { width:100%; height:72px; font:500 12px monospace; border:1px solid var(--borda); border-radius:10px; padding:8px; resize:none; }
@@ -68,6 +76,15 @@
   <p class="sub">Pague por Pix, cartão ou boleto sem sair desta página. Telão, música e vídeo da família estão em todos os planos.</p>
 
   <form class="planos" id="planos" aria-label="Planos"></form>
+
+  <details class="cupom" id="cupomBox">
+    <summary>Tenho um cupom</summary>
+    <div class="cupomLinha">
+      <input id="cupomCodigo" autocomplete="off" autocapitalize="characters" placeholder="Código do cupom" aria-label="Código do cupom">
+      <button type="button" class="botao sec" id="cupomAplicar">Aplicar</button>
+    </div>
+    <p class="sub" id="cupomMsg"></p>
+  </details>
 
   <section class="caixa" id="pagar" aria-live="polite">
     <div id="aviso"></div>
@@ -97,7 +114,7 @@ const PLANOS = {
                      resumo: '4 festas por mês (R$ 49,75 por festa). Cobrança mensal no cartão.' },
   'licenca-anual': { nome: 'Licença anual', valor: 1990, por: 'por ano', assinatura: true, pro: true,
                      resumo: '48 festas por ano, 4 por mês (R$ 41,46 por festa). Cobrança anual no cartão.' },
-  'adicional':     { nome: 'Festa adicional', valor: 79.79, por: 'por festa', pro: true,
+  'adicional':     { nome: 'Festa adicional', valor: 39.90, por: 'por festa', pro: true,
                      resumo: 'Para quem já tem a licença e precisa de mais uma festa além das incluídas.' }
 };
 
@@ -114,6 +131,38 @@ if (PRO) {
   $('.sub').textContent = 'Para quem trabalha com festas oferecer o álbum às famílias que atende. Telão, música e vídeo da família em todas as festas.';
 }
 
+let cupom = null;   // { codigo, valor } depois que o servidor confirma; o valor cobrado é sempre decidido no servidor
+const valorAtual = () => cupom ? cupom.valor : PLANOS[plano].valor;
+
+function atualizarCupomBox() {
+  cupom = null;
+  $('#cupomMsg').textContent = ''; $('#cupomCodigo').value = '';
+  $('#cupomBox').hidden = !!PLANOS[plano].assinatura;   // cupom só vale para pagamento único
+}
+
+$('#cupomAplicar').addEventListener('click', async () => {
+  const codigo = $('#cupomCodigo').value.trim(), msg = $('#cupomMsg');
+  if (!codigo) return;
+  msg.textContent = 'Conferindo…';
+  try {
+    const r = await api({ acao: 'cupom', plano, cupom: codigo });
+    if (!r.ok) { cupom = null; msg.textContent = r.erro || 'Cupom inválido.'; }
+    else { cupom = { codigo, valor: r.valor }; msg.textContent = r.valor > 0 ? 'Cupom aplicado: você paga ' + brl(r.valor) + '.' : 'Cupom de 100% aplicado: sem cobrança.'; }
+  } catch { msg.textContent = 'Sem conexão. Tente de novo.'; return; }
+  montar();
+});
+
+function mostrarGratis(chave) {
+  $('#brick').innerHTML = `<p>Cupom de 100%: não há cobrança. Informe o e-mail para receber.</p>
+    <input class="campo" id="emailGratis" type="email" autocomplete="email" placeholder="seu@email.com" aria-label="E-mail">
+    <button type="button" class="botao" id="receberGratis">Receber agora</button>`;
+  $('#receberGratis').onclick = async () => {
+    const email = $('#emailGratis').value.trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return aviso('Confira o e-mail.', true);
+    try { await enviar('pagar', { payer: { email } }, chave); } catch {}
+  };
+}
+
 function desenharPlanos() {
   $('#planos').innerHTML = Object.entries(PLANOS)
     .filter(([, p]) => !!p.pro === PRO)
@@ -125,6 +174,7 @@ function desenharPlanos() {
 $('#planos').addEventListener('change', e => {
   plano = e.target.value;
   history.replaceState(null, '', '?plano=' + plano);
+  atualizarCupomBox();
   montar();
 });
 
@@ -151,6 +201,7 @@ async function montarAgora() {
   const p = PLANOS[plano];
   const chave = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();   // evita cobrança dupla
   $('#brick').innerHTML = '';
+  if (valorAtual() <= 0) return mostrarGratis(chave);
   const callbacks = {
     onReady() {},
     onError(err) { console.warn(err); },
@@ -161,11 +212,11 @@ async function montarAgora() {
   };
   ctrl = p.assinatura
     ? await bricks.create('cardPayment', 'brick', {
-        initialization: { amount: p.valor },
+        initialization: { amount: valorAtual() },
         customization: { paymentMethods: { maxInstallments: 1 } },
         callbacks })
     : await bricks.create('payment', 'brick', {
-        initialization: { amount: p.valor },
+        initialization: { amount: valorAtual() },
         customization: { paymentMethods: { bankTransfer: 'all', creditCard: 'all', debitCard: 'all', ticket: 'all', maxInstallments: 12 } },
         callbacks });
 }
@@ -179,9 +230,9 @@ async function api(corpo) {
 async function enviar(acao, formData, chave) {
   aviso('');
   let r;
-  try { r = await api({ acao, plano, formData, chave }); }
+  try { r = await api({ acao, plano, formData, chave, cupom: cupom ? cupom.codigo : undefined }); }
   catch { aviso('Sem conexão agora. Nada foi cobrado. Tente de novo.', true); throw new Error('rede'); }
-  if (!r.ok) { aviso(esc(r.erro || 'O pagamento não passou.') + ' Nada foi cobrado.', true); throw new Error(r.erro); }
+  if (!r.ok) { aviso(esc(r.erro || 'O pagamento não passou.') + ' Nada foi cobrado.' + (r.diag ? '<br><small>Detalhe técnico: ' + esc(r.diag) + '</small>' : ''), true); throw new Error(r.erro); }
   mostrar(r);
 }
 
@@ -274,6 +325,7 @@ document.addEventListener('click', async e => {
 });
 
 desenharPlanos();
+atualizarCupomBox();
 montar();
 </script>
 </body>

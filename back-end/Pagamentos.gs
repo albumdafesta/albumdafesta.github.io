@@ -13,16 +13,17 @@
  *  4. Rode testarMercadoPago() pelo editor e autorize o acesso a serviços externos.
  *  5. Implantar > Gerenciar implantações > lápis > Versão: Nova versão > Implantar.
  *     (editar a implantação existente mantém o mesmo endereço /exec que o app já usa)
- *  6. No Mercado Pago: Suas integrações > sua aplicação > Webhooks > Modo produção.
- *     URL: o endereço que testarMercadoPago() mostra no registro (termina em ?mp=1).
- *     Eventos: "Pagamentos" e "Planos e assinaturas". É assim que chegam as cobranças
- *     da Licença Profissional (mensal e anual), que liberam as festas de cada período.
+ *  6. Rode ativarConferencia() uma vez pelo editor. Ela liga dois gatilhos: a cada 15 minutos confere
+ *     os Pix e boletos pendentes; a cada 6 horas confere as cobranças das assinaturas, que liberam
+ *     as festas de cada mês (licença mensal) ou ano (licença anual).
+ *     NÃO cadastre webhook no Mercado Pago: o Apps Script responde com redirecionamento (302) e o
+ *     painel trata isso como erro. A conferência por gatilho dispensa o webhook.
  *
  * Planos:
  *  - Faça Você Mesmo e Feito pra Você: pagamento único (Pix, cartão, boleto).
  *  - Licença Profissional mensal: assinatura no cartão, R$ 199/mês, 4 festas por mês.
  *  - Licença Profissional anual: assinatura no cartão, R$ 1.990 a cada 12 meses, 48 festas por ano (4 por mês).
- *  - Festa adicional (profissional): pagamento único de R$ 79,79, 1 festa.
+ *  - Festa adicional (profissional): pagamento único de R$ 39,90, 1 festa.
  * Cada festa é um código de ativação do degrau "pro" (ou "diy" no Faça Você Mesmo).
  * O valor vem da tabela abaixo, nunca da página. Cada pagamento é entregue uma única vez.
  */
@@ -37,7 +38,7 @@ const MP = {
     'feito':         { nome: 'Álbum Feito pra Você', valor: 319.15, briefing: true },
     'licenca':       { nome: 'Licença Profissional mensal', valor: 199.00, degrau: 'pro', festas: 4, planoMp: '1185667417654775aa692cb0336d3a8e' },
     'licenca-anual': { nome: 'Licença Profissional anual', valor: 1990.00, degrau: 'pro', festas: 48, planoMp: 'efa724186b7a46ee91d45b438353960c' },
-    'adicional':     { nome: 'Festa adicional da Licença Profissional', valor: 79.79, degrau: 'pro', festas: 1 }
+    'adicional':     { nome: 'Festa adicional da Licença Profissional', valor: 39.90, degrau: 'pro', festas: 1 }
   }
 };
 
@@ -58,8 +59,9 @@ function pagamentos_(e) {
     return json_({ ok: true });
   }
 
-  if (b.acao !== 'pagar' && b.acao !== 'assinar' && b.acao !== 'status-pagamento') return null;
+  if (b.acao !== 'pagar' && b.acao !== 'assinar' && b.acao !== 'status-pagamento' && b.acao !== 'cupom') return null;
   try {
+    if (b.acao === 'cupom') return json_(conferirCupom_(b));
     if (b.acao === 'pagar') return json_(pagar_(b));
     if (b.acao === 'assinar') return json_(assinar_(b));
     return json_(statusPagamento_(b));
@@ -76,18 +78,28 @@ function pagar_(b) {
   const f = b.formData || {};
   const payer = f.payer || {};
   const email = limpar_(payer.email, 120);
-  if (!f.payment_method_id || !email) return { ok: false, erro: 'Faltam dados do pagamento' };
+  if (!email) return { ok: false, erro: 'Faltam dados do pagamento' };
+
+  const pr = precoComCupom_(b.plano, plano, b.cupom);
+  if (pr.erro) return { ok: false, erro: pr.erro };
+  if (pr.valor <= 0) {   // cupom de 100%: não há cobrança, entrega direto
+    if (!usarCupom_(pr.cupom)) return { ok: false, erro: 'Cupom inválido ou já usado' };
+    const idg = 'cupom-' + Utilities.getUuid().slice(0, 8);
+    const entg = entregar_(plano, email);
+    salvarPg_(idg, { plano: b.plano, email: email, status: 'approved', entrega: entg, valor: 0, cupom: pr.cupom, criado: Date.now() });
+    return { ok: true, id: idg, status: 'approved', entrega: entg };
+  }
+  if (!f.payment_method_id) return { ok: false, erro: 'Faltam dados do pagamento' };
 
   const recibo = Utilities.getUuid();
   const corpo = {
-    transaction_amount: plano.valor,
+    transaction_amount: pr.valor,
     description: plano.nome,
     payment_method_id: String(f.payment_method_id),
     payer: Object.assign({}, payer, { email: email }),
     external_reference: b.plano + ':' + recibo.slice(0, 8),
     statement_descriptor: MP.DESCRITOR,
-    notification_url: ScriptApp.getService().getUrl() + '?mp=1',
-    metadata: { plano: b.plano }
+    metadata: { plano: b.plano, cupom: pr.cupom || '' }
   };
   if (f.token) {
     corpo.token = String(f.token);
@@ -97,9 +109,10 @@ function pagar_(b) {
   if (f.transaction_details) corpo.transaction_details = f.transaction_details;
 
   const r = mp_('post', '/v1/payments', corpo, limpar_(b.chave, 64) || recibo);
-  if (!r || !r.id) return { ok: false, erro: 'O Mercado Pago recusou os dados do pagamento' };
+  if (!r || !r.id) return { ok: false, erro: 'O Mercado Pago recusou os dados do pagamento', diag: diagMp_(r) };
 
-  salvarPg_(String(r.id), { plano: b.plano, email: email, recibo: hash_(recibo), criado: Date.now() });
+  if (pr.cupom && r.status !== 'rejected') usarCupom_(pr.cupom);   // recusa do cartão não gasta o cupom
+  salvarPg_(String(r.id), { plano: b.plano, email: email, recibo: hash_(recibo), criado: Date.now(), valor: pr.valor, cupom: pr.cupom || '' });
   const reg = processarPagamento_(String(r.id), r) || {};
   const pix = (r.point_of_interaction && r.point_of_interaction.transaction_data) || {};
   return {
@@ -125,7 +138,7 @@ function assinar_(b) {
     status: 'authorized',
     external_reference: b.plano + ':' + Utilities.getUuid().slice(0, 8)
   }, limpar_(b.chave, 64));
-  if (!r || !r.id) return { ok: false, erro: 'O cartão não foi aceito para assinatura. Tente outro cartão.' };
+  if (!r || !r.id) return { ok: false, erro: 'O cartão não foi aceito para assinatura. Tente outro cartão.', diag: diagMp_(r) };
   if (r.status !== 'authorized') return { ok: true, id: r.id, status: 'rejected' };
 
   const props = PropertiesService.getScriptProperties();
@@ -190,7 +203,7 @@ function processarPagamento_(id, r) {
     reg.status = r.status;
     if (r.status === 'approved' && !reg.entrega) {
       const plano = MP.PLANOS[reg.plano];
-      if (plano && !plano.planoMp && Math.abs(Number(r.transaction_amount) - plano.valor) < 0.01) {
+      if (plano && !plano.planoMp && Math.abs(Number(r.transaction_amount) - (reg.valor != null ? reg.valor : plano.valor)) < 0.01) {
         reg.entrega = entregar_(plano, reg.email);
         reg.entregueEm = Date.now();
       } else {
@@ -273,6 +286,44 @@ function avisarDono_(assunto, texto) {
   props.setProperty('AVISO:' + assunto, hoje);
 }
 
+/* Cupons: ficam na propriedade CUPONS e só valem para pagamento único (não para assinaturas).
+   Criar pelo editor com criarCupom() ou criarCuponsDeTeste(). Nunca escreva códigos neste arquivo: o repositório é público. */
+function precoComCupom_(planoId, plano, codigo) {
+  const c = String(codigo || '').trim().toUpperCase().slice(0, 30);
+  if (!c) return { valor: plano.valor };
+  const cup = JSON.parse(PropertiesService.getScriptProperties().getProperty('CUPONS') || '{}')[c];
+  if (!cup || (cup.usado || 0) >= cup.usos) return { erro: 'Cupom inválido ou já usado' };
+  if (cup.planos && cup.planos.indexOf(planoId) < 0) return { erro: 'Este cupom não vale para este plano' };
+  const v = cup.tipo === 'pct' ? plano.valor * (100 - cup.valor) / 100 : cup.valor;
+  return { valor: Math.max(0, Math.round(Math.min(v, plano.valor) * 100) / 100), cupom: c };
+}
+
+function usarCupom_(c) {   // false se esgotou entre a conferência e o uso
+  const props = PropertiesService.getScriptProperties();
+  return comTrava_(function () {
+    const todos = JSON.parse(props.getProperty('CUPONS') || '{}');
+    const cup = todos[c];
+    if (!cup || (cup.usado || 0) >= cup.usos) return false;
+    cup.usado = (cup.usado || 0) + 1;
+    props.setProperty('CUPONS', JSON.stringify(todos));
+    return true;
+  });
+}
+
+function conferirCupom_(b) {
+  const plano = MP.PLANOS[b.plano];
+  if (!plano || plano.planoMp) return { ok: false, erro: 'Cupom não vale para este plano' };
+  const pr = precoComCupom_(b.plano, plano, b.cupom);
+  return pr.erro ? { ok: false, erro: pr.erro } : { ok: true, valor: pr.valor };
+}
+
+/* Resumo curto do erro do Mercado Pago (aparece em letra pequena na página, para achar a causa) */
+function diagMp_(r) {
+  r = r || {};
+  const c = (r.cause && r.cause[0]) || {};
+  return [r.status, r.error, r.message, c.code ? 'causa ' + c.code : '', c.description].filter(Boolean).join(' · ').slice(0, 200);
+}
+
 function mp_(metodo, caminho, corpo, idem) {
   const token = PropertiesService.getScriptProperties().getProperty('MP_ACCESS_TOKEN');
   if (!token) throw new Error('MP_ACCESS_TOKEN ausente nas propriedades do script');
@@ -293,7 +344,7 @@ function mp_(metodo, caminho, corpo, idem) {
 function testarMercadoPago() {
   const r = mp_('get', '/v1/payment_methods');
   Logger.log(Array.isArray(r) ? 'Token ok: ' + r.length + ' formas de pagamento disponíveis' : 'Falhou: ' + JSON.stringify(r).slice(0, 300));
-  Logger.log('URL do webhook (cole no Mercado Pago): ' + ScriptApp.getService().getUrl() + '?mp=1');
+  Logger.log('Agora rode ativarConferencia() uma vez para ligar a conferência automática de Pix e assinaturas.');
 }
 
 // Lista os pagamentos e assinaturas recebidos pelo site e o que foi entregue.
@@ -303,5 +354,71 @@ function listarPagamentos() {
     const v = JSON.parse(props[k]);
     const ent = v.ultima || v.entrega;
     Logger.log([k, v.plano, v.status, v.email, ent ? ((ent.codigos || []).join(' ') || ent.tipo) : '-', v.periodos ? v.periodos + ' período(s) pago(s)' : '', v.alerta || ''].join(' · '));
+  });
+}
+
+/* ===== conferência automática (no lugar do webhook) ===== */
+
+// Pix e boletos que ficaram pendentes (cliente fechou a página antes de pagar): confere no Mercado Pago.
+function conferirPagamentos() {
+  const todos = PropertiesService.getScriptProperties().getProperties();
+  const agora = Date.now();
+  Object.keys(todos).filter(function (k) { return /^PG:/.test(k); }).forEach(function (k) {
+    try {
+      const v = JSON.parse(todos[k]);
+      const pendente = v.status === 'pending' || v.status === 'in_process';
+      if (pendente && agora - (v.criado || 0) < 5 * 864e5) processarPagamento_(k.slice(3));   // boleto vale até 3 dias úteis
+    } catch (err) { Logger.log('conferirPagamentos ' + k + ': ' + err); }
+  });
+}
+
+// Cobranças das assinaturas: cada cobrança aprovada libera as festas do período, uma única vez.
+function conferirAssinaturas() {
+  const todos = PropertiesService.getScriptProperties().getProperties();
+  Object.keys(todos).filter(function (k) { return /^AS:/.test(k); }).forEach(function (k) {
+    try {
+      const r = mp_('get', '/authorized_payments/search?preapproval_id=' + encodeURIComponent(k.slice(3)));
+      (r.results || []).forEach(function (ap) {
+        if (!todos['AP:' + ap.id]) processarCobranca_(String(ap.id));   // já entregue: pula
+      });
+    } catch (err) { Logger.log('conferirAssinaturas ' + k + ': ' + err); }
+  });
+}
+
+// Rodar uma vez pelo editor. Pode rodar de novo sem duplicar os gatilhos.
+function ativarConferencia() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (/^conferir(Pagamentos|Assinaturas)$/.test(t.getHandlerFunction())) ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('conferirPagamentos').timeBased().everyMinutes(15).create();
+  ScriptApp.newTrigger('conferirAssinaturas').timeBased().everyHours(6).create();
+  Logger.log('Conferência ligada: Pix e boletos a cada 15 minutos, assinaturas a cada 6 horas.');
+}
+
+/* ===== cupons (rodar pelo editor) ===== */
+
+// tipo 'pct' = desconto em % (100 = grátis) | 'fixo' = preço final em reais. planos: ex. ['diy'] (vazio = todos os avulsos)
+function criarCupom(codigo, tipo, valor, usos, planos) {
+  const props = PropertiesService.getScriptProperties();
+  const todos = JSON.parse(props.getProperty('CUPONS') || '{}');
+  const c = String(codigo).trim().toUpperCase();
+  todos[c] = { tipo: tipo, valor: Number(valor), usos: Number(usos) || 1, usado: 0, planos: planos && planos.length ? planos : null };
+  props.setProperty('CUPONS', JSON.stringify(todos));
+  Logger.log('Cupom ' + c + ': ' + (tipo === 'pct' ? valor + '% de desconto' : 'preço final R$ ' + valor) + ', ' + (Number(usos) || 1) + ' uso(s)');
+}
+
+// Cria 2 cupons de teste com códigos aleatórios (aparecem no registro de execução) para o Faça Você Mesmo:
+//  - CARTÃO: preço final R$ 1,00. Cobra de verdade no cartão, testa o Brick e depois dá para estornar.
+//  - GRÁTIS: 100%. Não cobra e não passa pelo cartão: testa só a entrega do código e o e-mail.
+function criarCuponsDeTeste() {
+  criarCupom('CARTAO-' + Utilities.getUuid().slice(0, 6), 'fixo', 1.00, 5, ['diy']);
+  criarCupom('GRATIS-' + Utilities.getUuid().slice(0, 6), 'pct', 100, 3, ['diy']);
+}
+
+function listarCupons() {
+  const todos = JSON.parse(PropertiesService.getScriptProperties().getProperty('CUPONS') || '{}');
+  Object.keys(todos).forEach(function (c) {
+    const x = todos[c];
+    Logger.log(c + ' · ' + (x.tipo === 'pct' ? x.valor + '%' : 'R$ ' + x.valor) + ' · usado ' + (x.usado || 0) + '/' + x.usos + ' · ' + (x.planos ? x.planos.join(',') : 'todos os avulsos'));
   });
 }
