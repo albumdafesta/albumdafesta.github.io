@@ -59,8 +59,9 @@ function pagamentos_(e) {
     return json_({ ok: true });
   }
 
-  if (b.acao !== 'pagar' && b.acao !== 'assinar' && b.acao !== 'status-pagamento') return null;
+  if (b.acao !== 'pagar' && b.acao !== 'assinar' && b.acao !== 'status-pagamento' && b.acao !== 'cupom') return null;
   try {
+    if (b.acao === 'cupom') return json_(conferirCupom_(b));
     if (b.acao === 'pagar') return json_(pagar_(b));
     if (b.acao === 'assinar') return json_(assinar_(b));
     return json_(statusPagamento_(b));
@@ -77,17 +78,28 @@ function pagar_(b) {
   const f = b.formData || {};
   const payer = f.payer || {};
   const email = limpar_(payer.email, 120);
-  if (!f.payment_method_id || !email) return { ok: false, erro: 'Faltam dados do pagamento' };
+  if (!email) return { ok: false, erro: 'Faltam dados do pagamento' };
+
+  const pr = precoComCupom_(b.plano, plano, b.cupom);
+  if (pr.erro) return { ok: false, erro: pr.erro };
+  if (pr.valor <= 0) {   // cupom de 100%: não há cobrança, entrega direto
+    if (!usarCupom_(pr.cupom)) return { ok: false, erro: 'Cupom inválido ou já usado' };
+    const idg = 'cupom-' + Utilities.getUuid().slice(0, 8);
+    const entg = entregar_(plano, email);
+    salvarPg_(idg, { plano: b.plano, email: email, status: 'approved', entrega: entg, valor: 0, cupom: pr.cupom, criado: Date.now() });
+    return { ok: true, id: idg, status: 'approved', entrega: entg };
+  }
+  if (!f.payment_method_id) return { ok: false, erro: 'Faltam dados do pagamento' };
 
   const recibo = Utilities.getUuid();
   const corpo = {
-    transaction_amount: plano.valor,
+    transaction_amount: pr.valor,
     description: plano.nome,
     payment_method_id: String(f.payment_method_id),
     payer: Object.assign({}, payer, { email: email }),
     external_reference: b.plano + ':' + recibo.slice(0, 8),
     statement_descriptor: MP.DESCRITOR,
-    metadata: { plano: b.plano }
+    metadata: { plano: b.plano, cupom: pr.cupom || '' }
   };
   if (f.token) {
     corpo.token = String(f.token);
@@ -99,7 +111,8 @@ function pagar_(b) {
   const r = mp_('post', '/v1/payments', corpo, limpar_(b.chave, 64) || recibo);
   if (!r || !r.id) return { ok: false, erro: 'O Mercado Pago recusou os dados do pagamento', diag: diagMp_(r) };
 
-  salvarPg_(String(r.id), { plano: b.plano, email: email, recibo: hash_(recibo), criado: Date.now() });
+  if (pr.cupom && r.status !== 'rejected') usarCupom_(pr.cupom);   // recusa do cartão não gasta o cupom
+  salvarPg_(String(r.id), { plano: b.plano, email: email, recibo: hash_(recibo), criado: Date.now(), valor: pr.valor, cupom: pr.cupom || '' });
   const reg = processarPagamento_(String(r.id), r) || {};
   const pix = (r.point_of_interaction && r.point_of_interaction.transaction_data) || {};
   return {
@@ -190,7 +203,7 @@ function processarPagamento_(id, r) {
     reg.status = r.status;
     if (r.status === 'approved' && !reg.entrega) {
       const plano = MP.PLANOS[reg.plano];
-      if (plano && !plano.planoMp && Math.abs(Number(r.transaction_amount) - plano.valor) < 0.01) {
+      if (plano && !plano.planoMp && Math.abs(Number(r.transaction_amount) - (reg.valor != null ? reg.valor : plano.valor)) < 0.01) {
         reg.entrega = entregar_(plano, reg.email);
         reg.entregueEm = Date.now();
       } else {
@@ -273,6 +286,37 @@ function avisarDono_(assunto, texto) {
   props.setProperty('AVISO:' + assunto, hoje);
 }
 
+/* Cupons: ficam na propriedade CUPONS e só valem para pagamento único (não para assinaturas).
+   Criar pelo editor com criarCupom() ou criarCuponsDeTeste(). Nunca escreva códigos neste arquivo: o repositório é público. */
+function precoComCupom_(planoId, plano, codigo) {
+  const c = String(codigo || '').trim().toUpperCase().slice(0, 30);
+  if (!c) return { valor: plano.valor };
+  const cup = JSON.parse(PropertiesService.getScriptProperties().getProperty('CUPONS') || '{}')[c];
+  if (!cup || (cup.usado || 0) >= cup.usos) return { erro: 'Cupom inválido ou já usado' };
+  if (cup.planos && cup.planos.indexOf(planoId) < 0) return { erro: 'Este cupom não vale para este plano' };
+  const v = cup.tipo === 'pct' ? plano.valor * (100 - cup.valor) / 100 : cup.valor;
+  return { valor: Math.max(0, Math.round(Math.min(v, plano.valor) * 100) / 100), cupom: c };
+}
+
+function usarCupom_(c) {   // false se esgotou entre a conferência e o uso
+  const props = PropertiesService.getScriptProperties();
+  return comTrava_(function () {
+    const todos = JSON.parse(props.getProperty('CUPONS') || '{}');
+    const cup = todos[c];
+    if (!cup || (cup.usado || 0) >= cup.usos) return false;
+    cup.usado = (cup.usado || 0) + 1;
+    props.setProperty('CUPONS', JSON.stringify(todos));
+    return true;
+  });
+}
+
+function conferirCupom_(b) {
+  const plano = MP.PLANOS[b.plano];
+  if (!plano || plano.planoMp) return { ok: false, erro: 'Cupom não vale para este plano' };
+  const pr = precoComCupom_(b.plano, plano, b.cupom);
+  return pr.erro ? { ok: false, erro: pr.erro } : { ok: true, valor: pr.valor };
+}
+
 /* Resumo curto do erro do Mercado Pago (aparece em letra pequena na página, para achar a causa) */
 function diagMp_(r) {
   r = r || {};
@@ -349,4 +393,32 @@ function ativarConferencia() {
   ScriptApp.newTrigger('conferirPagamentos').timeBased().everyMinutes(15).create();
   ScriptApp.newTrigger('conferirAssinaturas').timeBased().everyHours(6).create();
   Logger.log('Conferência ligada: Pix e boletos a cada 15 minutos, assinaturas a cada 6 horas.');
+}
+
+/* ===== cupons (rodar pelo editor) ===== */
+
+// tipo 'pct' = desconto em % (100 = grátis) | 'fixo' = preço final em reais. planos: ex. ['diy'] (vazio = todos os avulsos)
+function criarCupom(codigo, tipo, valor, usos, planos) {
+  const props = PropertiesService.getScriptProperties();
+  const todos = JSON.parse(props.getProperty('CUPONS') || '{}');
+  const c = String(codigo).trim().toUpperCase();
+  todos[c] = { tipo: tipo, valor: Number(valor), usos: Number(usos) || 1, usado: 0, planos: planos && planos.length ? planos : null };
+  props.setProperty('CUPONS', JSON.stringify(todos));
+  Logger.log('Cupom ' + c + ': ' + (tipo === 'pct' ? valor + '% de desconto' : 'preço final R$ ' + valor) + ', ' + (Number(usos) || 1) + ' uso(s)');
+}
+
+// Cria 2 cupons de teste com códigos aleatórios (aparecem no registro de execução) para o Faça Você Mesmo:
+//  - CARTÃO: preço final R$ 1,00. Cobra de verdade no cartão, testa o Brick e depois dá para estornar.
+//  - GRÁTIS: 100%. Não cobra e não passa pelo cartão: testa só a entrega do código e o e-mail.
+function criarCuponsDeTeste() {
+  criarCupom('CARTAO-' + Utilities.getUuid().slice(0, 6), 'fixo', 1.00, 5, ['diy']);
+  criarCupom('GRATIS-' + Utilities.getUuid().slice(0, 6), 'pct', 100, 3, ['diy']);
+}
+
+function listarCupons() {
+  const todos = JSON.parse(PropertiesService.getScriptProperties().getProperty('CUPONS') || '{}');
+  Object.keys(todos).forEach(function (c) {
+    const x = todos[c];
+    Logger.log(c + ' · ' + (x.tipo === 'pct' ? x.valor + '%' : 'R$ ' + x.valor) + ' · usado ' + (x.usado || 0) + '/' + x.usos + ' · ' + (x.planos ? x.planos.join(',') : 'todos os avulsos'));
+  });
 }
