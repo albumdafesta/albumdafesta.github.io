@@ -23,7 +23,7 @@
  *  - Faça Você Mesmo e Feito pra Você: pagamento único (Pix, cartão, boleto).
  *  - Licença Profissional mensal: assinatura no cartão, R$ 199/mês, 4 festas por mês.
  *  - Licença Profissional anual: assinatura no cartão, R$ 1.990 a cada 12 meses, 48 festas por ano (4 por mês).
- *  - Festa adicional (profissional): pagamento único de R$ 79,79, 1 festa.
+ *  - Festa adicional (profissional): pagamento único de R$ 39,90, 1 festa.
  * Cada festa é um código de ativação do degrau "pro" (ou "diy" no Faça Você Mesmo).
  * O valor vem da tabela abaixo, nunca da página. Cada pagamento é entregue uma única vez.
  */
@@ -38,7 +38,7 @@ const MP = {
     'feito':         { nome: 'Álbum Feito pra Você', valor: 319.15, briefing: true },
     'licenca':       { nome: 'Licença Profissional mensal', valor: 199.00, degrau: 'pro', festas: 4, planoMp: '1185667417654775aa692cb0336d3a8e' },
     'licenca-anual': { nome: 'Licença Profissional anual', valor: 1990.00, degrau: 'pro', festas: 48, planoMp: 'efa724186b7a46ee91d45b438353960c' },
-    'adicional':     { nome: 'Festa adicional da Licença Profissional', valor: 79.79, degrau: 'pro', festas: 1 }
+    'adicional':     { nome: 'Festa adicional da Licença Profissional', valor: 39.90, degrau: 'pro', festas: 1 }
   }
 };
 
