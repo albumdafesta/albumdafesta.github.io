@@ -1,0 +1,2 @@
+Sons do Álbum de Recados: 10 arquivos WAV da biblioteca SoundWeaver (licença MIT, uso livre, pré-renderizados).
+Para trocar por gravações CC0 (ex.: Kenney Interface Sounds), substitua o arquivo com o mesmo nome.
