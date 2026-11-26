@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Álbum de Recados</title>
+<style>
+:root{--verde:#0f5c33;--campo:#1d8a4d;--preto:#0e1210;--amarelo:#ffd21f;--papel:#f5f6ef;--cinza:#5d675f;--linha:#dfe3d8;--erro:#b3261e;--r:16px}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--papel);color:var(--preto);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.topo{background:var(--verde);color:#fff;padding:28px 20px 34px;position:relative;overflow:hidden}
+.topo::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 50% 135%,transparent 0 46px,rgba(255,255,255,.22) 47px 49px,transparent 50px),
+  linear-gradient(90deg,transparent calc(50% - 1px),rgba(255,255,255,.16) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px));
+  pointer-events:none}
+.topo .in{max-width:560px;margin:0 auto;position:relative}
+.sel{display:inline-block;background:var(--amarelo);color:var(--preto);font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+h1{margin:12px 0 6px;font:900 30px/1.1 "Arial Black",Impact,system-ui,sans-serif;letter-spacing:-.01em}
+.topo p{margin:0;opacity:.92}
+main{max-width:560px;margin:-18px auto 0;padding:0 16px 120px;position:relative}
+.card{background:#fff;border:1px solid var(--linha);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+label,.rot{display:block;font-weight:700;margin:0 0 6px}
+.hint{display:block;color:var(--cinza);font-size:13px;margin-top:5px}
+input[type=text],input[type=password],textarea{width:100%;font:inherit;padding:12px 13px;border:1.5px solid #c9cfc3;border-radius:12px;background:#fff;color:var(--preto)}
+textarea{min-height:104px;resize:vertical}
+input:focus,textarea:focus,button:focus-visible,label.foto:focus-within{outline:3px solid var(--amarelo);outline-offset:1px;border-color:var(--verde)}
+.campo{margin-bottom:16px}.campo:last-child{margin-bottom:0}
+.foto{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;border:2px dashed var(--campo);border-radius:var(--r);padding:22px 12px;text-align:center;background:#f0f8f2;cursor:pointer;font-weight:700;color:var(--verde)}
+.foto input{position:absolute;opacity:0;width:1px;height:1px}
+.foto img{max-width:100%;max-height:300px;border-radius:12px;display:block}
+.foto small{font-weight:500;color:var(--cinza)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:14px 20px;font:800 16px/1 system-ui,sans-serif;background:var(--preto);color:#fff;cursor:pointer}
+.btn.amarelo{background:var(--amarelo);color:var(--preto)}
+.btn.sec{background:#fff;color:var(--preto);border:1.5px solid var(--preto)}
+.btn.peq{padding:9px 13px;font-size:14px;border-radius:11px}
+.btn[disabled]{opacity:.5;cursor:default}
+.barra{position:fixed;left:0;right:0;bottom:0;background:rgba(245,246,239,.96);backdrop-filter:blur(6px);border-top:1px solid var(--linha);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.barra .in{max-width:560px;margin:0 auto}
+.barra .btn{width:100%}
+.chk{display:flex;gap:11px;align-items:flex-start;margin-bottom:12px;font-weight:500}
+.chk input{margin-top:3px;width:20px;height:20px;flex:none;accent-color:var(--verde)}
+.chk b{font-weight:700}
+.cx{border-left:4px solid var(--amarelo);background:#fffbe6;padding:12px 14px;border-radius:0 12px 12px 0;font-size:14px;margin:0 0 14px}
+.erro{color:var(--erro);font-weight:700;margin:8px 0 0}
+.ok{text-align:center;padding:30px 18px}
+.ok .big{font:900 40px/1 "Arial Black",system-ui,sans-serif;color:var(--verde)}
+a{color:var(--verde);font-weight:700}
+.link{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--verde);text-decoration:underline;cursor:pointer}
+.radios{display:grid;gap:8px}
+.radios label{display:flex;gap:10px;align-items:center;font-weight:600;border:1.5px solid #c9cfc3;border-radius:12px;padding:11px 12px;margin:0;cursor:pointer;background:#fff}
+.radios input{accent-color:var(--verde);width:18px;height:18px}
+.radios label:has(input:checked){border-color:var(--verde);background:#f0f8f2}
+dialog{border:0;border-radius:var(--r);max-width:min(560px,94vw);padding:0}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog .c{padding:20px;max-height:78vh;overflow:auto}
+dialog h2{margin:0 0 10px;font-size:20px}
+dialog h3{margin:16px 0 4px;font-size:15px}
+dialog p,dialog li{font-size:14px;margin:4px 0}
+/* área de quem contratou */
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.item{background:#fff;border:1px solid var(--linha);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.item .img{aspect-ratio:4/3;background:#e9ece3;display:flex;align-items:center;justify-content:center;color:var(--cinza);font-size:13px}
+.item .img img{width:100%;height:100%;object-fit:cover;display:block}
+.item .tx{padding:12px 14px;flex:1}
+.item .nome{font-weight:800}
+.item .rec{margin:4px 0 0;white-space:pre-wrap;word-break:break-word}
+.item .rod{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 14px 14px}
+.tag{font-size:12px;font-weight:800;border-radius:999px;padding:4px 9px}
+.tag.s{background:#dff3e5;color:#0a5a2c}.tag.n{background:#eceee7;color:#5b655d}
+.wide{max-width:1040px}
+.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+.prog{height:8px;background:#e1e5da;border-radius:99px;overflow:hidden;margin:10px 0}
+.prog i{display:block;height:100%;width:0;background:var(--campo);transition:width .2s}
+.oculto{display:none!important}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<dialog id="dlgTermos"><div class="c">
+  <h2>Termos e privacidade</h2>
+  <p>Este álbum é um presente: amigos e familiares mandam uma foto e um recado para <b class="homenageado">o aniversariante</b>.</p>
+  <h3>Quem vê o que você envia</h3>
+  <p>Somente quem contratou o álbum, com senha própria. Os outros convidados <b>não veem</b> as fotos nem os recados uns dos outros. Não publicamos, não vendemos e não damos a fotos ou recados a ninguém.</p>
+  <h3>Que dados guardamos</h3>
+  <p>A foto, o seu nome, o recado, a data do envio e as autorizações que você marcar abaixo. Se você tem menos de 18 anos, também guardamos o nome do responsável que autorizou.</p>
+  <h3>Menores de 18 anos</h3>
+  <p>A lei (LGPD) exige que um pai, mãe ou responsável legal autorize o uso de dados e imagem de crianças e adolescentes. Por isso, quem tem menos de 18 anos precisa de um responsável para enviar. O responsável pode pedir a exclusão a qualquer momento.</p>
+  <h3>Vídeo com inteligência artificial (opcional)</h3>
+  <p>Quem contratou receberá, junto com o álbum, um vídeo montado com as fotos e os recados. Para isso, as fotos e os recados serão processados por inteligência artificial de terceiros: o <b>Claude, da Anthropic</b>. Você só entra no vídeo se marcar a autorização. Se não marcar, a foto e o recado continuam no álbum e ficam fora do vídeo. Você pode mudar de ideia pedindo a retirada antes da montagem.</p>
+  <h3>Por quanto tempo</h3>
+  <p>As fotos e os recados são apagados em <span id="tDataApagar">alguns meses</span>. Para pedir a exclusão antes, fale com quem organizou o álbum.</p>
+  <p style="margin-top:16px"><button class="btn amarelo" id="fecharTermos">Entendi</button></p>
+</div></dialog>
+
+<script>
+'use strict';
+/* ---------- configuração ---------- */
+const CONFIG = {
+  SCRIPT_URL: '',                         // colar aqui o endereço /exec do Apps Script "Álbum de Recados"
+  TERMOS_VERSAO: 'recados-2026-11-26.1',  // igual a CFG.TERMOS_VERSAO do Recados.gs
+  HOMENAGEADO: 'Caio',
+  MAX_LADO: 2000,
+  MAX_LADO_MINI: 640
+};
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('recados:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('recados:' + k, JSON.stringify(v)); } catch (e) {} }
+};
+const sess = {
+  get() { try { return sessionStorage.getItem('recados:token') || ''; } catch (e) { return ''; } },
+  set(v) { try { v ? sessionStorage.setItem('recados:token', v) : sessionStorage.removeItem('recados:token'); } catch (e) {} }
+};
+const idAparelho = () => { let d = store.get('disp', ''); if (!d) { d = Math.random().toString(36).slice(2, 12); store.set('disp', d); } return d; };
+const configurado = () => /^https:\/\/script\.google\.com\//.test(CONFIG.SCRIPT_URL);
+
+async function apiGet(params) {
+  const r = await fetch(CONFIG.SCRIPT_URL + '?' + new URLSearchParams(params), { cache: 'no-store' });
+  return r.json();
+}
+async function apiPost(obj) {
+  // text/plain evita a checagem prévia (CORS) que o Apps Script não responde
+  const r = await fetch(CONFIG.SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(obj) });
+  const j = await r.json();
+  if (!j.ok) { const e = new Error(j.erro || 'Erro'); e.tentarDeNovo = !!j.tentarDeNovo; throw e; }
+  return j;
+}
+async function apiPostRetry(obj, vezes = 4) {
+  for (let i = 0; ; i++) {
+    try { return await apiPost(obj); }
+    catch (e) { if (!(e.tentarDeNovo || e instanceof TypeError) || i >= vezes) throw e; await new Promise(r => setTimeout(r, 1500 + Math.random() * 3000)); }
+  }
+}
+
+/* ---------- imagem ---------- */
+function carregarImg(file) {
+  return new Promise((ok, falha) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); falha(new Error('Não consegui abrir essa foto. Tente outra ou tire uma nova.')); };
+    img.src = url;
+  });
+}
+function reduzir(img, lado, qual) {
+  const esc_ = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * esc_)), h = Math.max(1, Math.round(img.naturalHeight * esc_));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(img, 0, 0, w, h);
+  return new Promise(ok => c.toBlob(b => ok({ blob: b, w, h }), 'image/jpeg', qual));
+}
+const base64 = blob => new Promise((ok, falha) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = falha; r.readAsDataURL(blob); });
+
+/* ---------- ZIP sem compressão (as fotos já são JPEG) ---------- */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function montarZip(arquivos) {              // [{nome, dados:Uint8Array}]
+  const enc = new TextEncoder(), partes = [], central = []; let desloc = 0;
+  const u16 = v => [v & 255, (v >> 8) & 255], u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  arquivos.forEach(a => {
+    const nome = enc.encode(a.nome), crc = crc32(a.dados), tam = a.dados.length;
+    const cab = new Uint8Array([0x50, 0x4b, 3, 4, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), 0, 0]);
+    partes.push(cab, nome, a.dados);
+    central.push(new Uint8Array([0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(desloc)]), nome);
+    desloc += cab.length + nome.length + tam;
+  });
+  const tamCentral = central.reduce((s, p) => s + p.length, 0);
+  const fim = new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(arquivos.length), ...u16(arquivos.length), ...u32(tamCentral), ...u32(desloc), 0, 0]);
+  return new Blob([...partes, ...central, fim], { type: 'application/zip' });
+}
+function baixarBlob(blob, nome) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+}
+const u8doB64 = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+const slug = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'foto';
+
+/* ---------- termos ---------- */
+function abrirTermos() { const d = $('#dlgTermos'); $('.homenageado', d).textContent = Album.homenageado; if (d.showModal) d.showModal(); }
+$('#fecharTermos').onclick = () => $('#dlgTermos').close();
+
+const Album = { homenageado: CONFIG.HOMENAGEADO, envioAberto: true, envioAte: '' };
+
+/* ---------- tela do convidado ---------- */
+let fotoEscolhida = null;   // { full:{blob,w,h}, mini:{blob}, url }
+function telaConvidado() {
+  const lembrado = store.get('quem', { nome: '', menor: null, responsavel: '' });
+  const aceitou = store.get('termos', null);
+  const termosOk = !!(aceitou && aceitou.v === CONFIG.TERMOS_VERSAO);
+  $('#app').innerHTML = `
+  <header class="topo"><div class="in"><span class="sel">Álbum de recados</span>
+    <h1>Mande uma foto e um recado para o ${esc(Album.homenageado)}</h1>
+    <p>Só quem organizou o álbum vê o que você enviar.</p></div></header>
+  <main>
+    ${!Album.envioAberto ? `<div class="card"><b>O envio terminou.</b> Obrigado a quem participou!</div>` : `
+    <form id="f" class="card" autocomplete="off" novalidate>
+      <div class="campo"><label for="nome">Seu nome</label><input type="text" id="nome" maxlength="40" value="${esc(lembrado.nome)}" placeholder="Como o ${esc(Album.homenageado)} te conhece" autocomplete="given-name"></div>
+      <div class="campo"><span class="rot">Sua foto</span>
+        <label class="foto" id="areaFoto" tabindex="0"><input type="file" id="arq" accept="image/*"><span id="fotoTxt">Toque para escolher uma foto<small>Da galeria ou da câmera</small></span></label></div>
+      <div class="campo"><label for="recado">Seu recado</label><textarea id="recado" maxlength="400" placeholder="Escreva algo para o ${esc(Album.homenageado)}"></textarea><span class="hint"><span id="cont">0</span>/400</span></div>
+      <div class="campo"><span class="rot">Sua idade</span>
+        <div class="radios"><label><input type="radio" name="idade" value="adulto" ${lembrado.menor === false ? 'checked' : ''}> Tenho 18 anos ou mais</label>
+        <label><input type="radio" name="idade" value="menor" ${lembrado.menor === true ? 'checked' : ''}> Tenho menos de 18 anos</label></div></div>
+      <div class="campo oculto" id="blocoResp"><p class="cx"><b>Peça para um responsável (pai, mãe ou responsável legal) ler os termos e preencher aqui.</b> A lei exige a autorização dele para enviar a sua foto.</p>
+        <label for="resp">Nome do responsável</label><input type="text" id="resp" maxlength="60" value="${esc(lembrado.responsavel)}" autocomplete="off"></div>
+      <label class="chk"><input type="checkbox" id="cTermos" ${termosOk ? 'checked' : ''}><span>Li e concordo com os <button type="button" class="link" id="verTermos">termos e a privacidade</button>.</span></label>
+      <label class="chk"><input type="checkbox" id="cIA"><span><b>Opcional:</b> autorizo usar minha foto e meu recado no vídeo do ${esc(Album.homenageado)}, montado por inteligência artificial de terceiros (Claude, da Anthropic). <span class="hint">Se não marcar, sua foto e seu recado entram no álbum e ficam fora do vídeo.</span></span></label>
+      <p class="erro oculto" id="erro" role="alert"></p>
+      <input type="text" id="site" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">
+    </form>`}
+  </main>
+  ${Album.envioAberto ? `<div class="barra"><div class="in"><button class="btn amarelo" id="enviar">Enviar para o ${esc(Album.homenageado)}</button></div></div>` : ''}`;
+  if (!Album.envioAberto) return;
+  fotoEscolhida = null;
+  const atualizaResp = () => $('#blocoResp').classList.toggle('oculto', !(document.querySelector('input[name=idade]:checked') || {}).value || document.querySelector('input[name=idade]:checked').value !== 'menor');
+  document.querySelectorAll('input[name=idade]').forEach(r => r.onchange = atualizaResp); atualizaResp();
+  $('#recado').oninput = e => $('#cont').textContent = e.target.value.length;
+  $('#verTermos').onclick = abrirTermos;
+  $('#areaFoto').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#arq').click(); } };
+  $('#arq').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const img = await carregarImg(f);
+      const full = await reduzir(img, CONFIG.MAX_LADO, .86), mini = await reduzir(img, CONFIG.MAX_LADO_MINI, .78);
+      if (fotoEscolhida && fotoEscolhida.url) URL.revokeObjectURL(fotoEscolhida.url);
+      fotoEscolhida = { full, mini, url: URL.createObjectURL(full.blob) };
+      $('#fotoTxt').innerHTML = `<img src="${fotoEscolhida.url}" alt="Foto escolhida"><small>Toque para trocar</small>`;
+      erro('');
+    } catch (err) { erro(err.message); }
+  };
+  $('#enviar').onclick = enviar;
+}
+function erro(m) { const e = $('#erro'); if (!e) return; e.textContent = m; e.classList.toggle('oculto', !m); if (m) e.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+
+async function enviar() {
+  const nome = $('#nome').value.trim(), recado = $('#recado').value.trim();
+  const idade = (document.querySelector('input[name=idade]:checked') || {}).value;
+  const resp = $('#resp').value.trim();
+  if (nome.length < 2) return erro('Escreva seu nome.');
+  if (!fotoEscolhida) return erro('Escolha uma foto.');
+  if (!recado) return erro('Escreva um recado.');
+  if (!idade) return erro('Diga se você tem 18 anos ou mais.');
+  if (idade === 'menor' && resp.length < 3) return erro('Para menores de 18 anos, escreva o nome do responsável.');
+  if (!$('#cTermos').checked) return erro('Para enviar, marque que leu e concorda com os termos.');
+  if (!configurado()) return erro('O álbum ainda não está ligado ao servidor.');
+  const btn = $('#enviar'); btn.disabled = true; btn.textContent = 'Enviando…'; erro('');
+  try {
+    const aceiteT = store.get('termos', null);
+    const aceite = (aceiteT && aceiteT.v === CONFIG.TERMOS_VERSAO) ? aceiteT : { v: CONFIG.TERMOS_VERSAO, t: Date.now() };
+    store.set('termos', aceite);
+    store.set('quem', { nome, menor: idade === 'menor', responsavel: idade === 'menor' ? resp : '' });
+    await apiPostRetry({
+      acao: 'enviar', dispositivo: idAparelho(), aceite, chave: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      nome, recado, menor: idade === 'menor', responsavel: idade === 'menor' ? resp : '', autorizaIA: $('#cIA').checked,
+      mime: 'image/jpeg', w: fotoEscolhida.full.w, h: fotoEscolhida.full.h,
+      dados: await base64(fotoEscolhida.full.blob), mini: await base64(fotoEscolhida.mini.blob), site: $('#site').value
+    });
+    telaEnviado();
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Enviar para o ' + Album.homenageado;
+    erro(err.tentarDeNovo || err instanceof TypeError ? 'Sem conexão no momento. Confira a internet e toque em Enviar de novo.' : err.message);
+  }
+}
+function telaEnviado() {
+  $('#app').innerHTML = `
+  <header class="topo"><div class="in"><span class="sel">Álbum de recados</span><h1>Enviado!</h1><p>Seu recado vai direto para quem organizou.</p></div></header>
+  <main><div class="card ok"><div class="big">Valeu, ${esc((store.get('quem', {}).nome || '').split(' ')[0] || 'amigo')}!</div>
+  <p>O ${esc(Album.homenageado)} vai ver o que você mandou.</p><p><button class="btn" id="outra">Enviar outra foto</button></p></div></main>`;
+  $('#outra').onclick = telaConvidado;
+}
+
+/* ---------- área de quem contratou ---------- */
+const Dono = { fotos: [], minis: {}, homenageado: '', acessoAte: '' };
+function telaEntrar(msg) {
+  $('#app').innerHTML = `
+  <header class="topo"><div class="in"><span class="sel">Área privada</span><h1>Álbum do ${esc(Album.homenageado)}</h1><p>Entre com a senha que você recebeu.</p></div></header>
+  <main><form class="card" id="fe"><div class="campo"><label for="pin">Senha</label><input type="password" id="pin" inputmode="numeric" autocomplete="current-password" maxlength="12"></div>
+  <p class="erro ${msg ? '' : 'oculto'}" id="erroE" role="alert">${esc(msg || '')}</p>
+  <button class="btn amarelo" type="submit" id="bEntrar">Entrar</button></form></main>`;
+  $('#fe').onsubmit = async e => {
+    e.preventDefault();
+    const b = $('#bEntrar'); b.disabled = true; b.textContent = 'Entrando…';
+    try { const r = await apiPost({ acao: 'entrar', pin: $('#pin').value, dispositivo: idAparelho() }); sess.set(r.token); telaAlbum(); }
+    catch (err) { telaEntrar(err.message); }
+  };
+}
+async function chamar(obj) {
+  try { return await apiPostRetry(Object.assign({ token: sess.get() }, obj)); }
+  catch (e) { if (/Sessão expirada/.test(e.message)) { sess.set(''); telaEntrar('Sua sessão terminou. Entre de novo.'); } throw e; }
+}
+async function telaAlbum() {
+  $('#app').innerHTML = `<header class="topo"><div class="in wide"><span class="sel">Área privada</span><h1>Álbum do ${esc(Album.homenageado)}</h1><p id="resumo">Carregando…</p></div></header><main class="wide"><div id="corpo"></div></main>`;
+  let r;
+  try { r = await chamar({ acao: 'listar' }); } catch (e) { return; }
+  Dono.fotos = r.fotos.sort((a, b) => a.t - b.t); Dono.minis = {}; Dono.acessoAte = r.acessoAte;
+  desenharDono();
+  carregarMinis();
+}
+function desenharDono() {
+  const f = Dono.fotos, nIA = f.filter(x => x.ia).length;
+  $('#resumo').textContent = f.length ? `${f.length} ${f.length === 1 ? 'recado' : 'recados'} · ${nIA} no vídeo · ${f.length - nIA} fora do vídeo` : 'Ainda não chegou nenhum recado.';
+  $('#corpo').innerHTML = `
+  ${f.length ? `<div class="acoes"><button class="btn" id="bTodas">Baixar tudo (ZIP)</button><button class="btn sec" id="bVideo" ${nIA ? '' : 'disabled'}>Baixar só os do vídeo (ZIP)</button><button class="btn sec" id="sair">Sair</button></div>
+  <div class="prog oculto" id="prog"><i></i></div><p class="hint oculto" id="progTx"></p>` : `<div class="acoes"><button class="btn sec" id="sair">Sair</button></div>`}
+  <div class="grade">${f.map(x => `<article class="item" data-id="${esc(x.id)}"><div class="img" data-img="${esc(x.id)}">${Dono.minis[x.id] ? `<img alt="Foto de ${esc(x.nome)}" src="${Dono.minis[x.id]}">` : 'carregando…'}</div>
+    <div class="tx"><div class="nome">${esc(x.nome)}</div><p class="rec">${esc(x.recado)}</p></div>
+    <div class="rod"><span class="tag ${x.ia ? 's' : 'n'}">${x.ia ? 'No vídeo' : 'Fora do vídeo'}</span>${x.menor ? `<span class="tag n" title="Responsável: ${esc(x.responsavel)}">Menor de 18</span>` : ''}
+      <button class="btn sec peq" data-baixar="${esc(x.id)}">Baixar</button><button class="btn sec peq" data-apagar="${esc(x.id)}">Apagar</button></div></article>`).join('')}</div>
+  <p class="hint" style="margin-top:18px">As fotos ficam disponíveis até ${esc(Dono.acessoAte.split('-').reverse().join('/'))} e depois são apagadas. Baixe antes dessa data.</p>`;
+  $('#sair').onclick = () => { sess.set(''); telaEntrar(); };
+  if ($('#bTodas')) { $('#bTodas').onclick = () => baixarZip(false); $('#bVideo').onclick = () => baixarZip(true); }
+  document.querySelectorAll('[data-baixar]').forEach(b => b.onclick = () => baixarUma(b.dataset.baixar, b));
+  document.querySelectorAll('[data-apagar]').forEach(b => b.onclick = () => apagarUma(b.dataset.apagar, b));
+}
+async function carregarMinis() {
+  const falta = Dono.fotos.map(f => f.id).filter(id => !Dono.minis[id]);
+  for (let i = 0; i < falta.length; i += 12) {
+    let r; try { r = await chamar({ acao: 'miniaturas', ids: falta.slice(i, i + 12) }); } catch (e) { return; }
+    Object.keys(r.minis).forEach(id => {
+      Dono.minis[id] = 'data:image/jpeg;base64,' + r.minis[id];
+      const el = document.querySelector(`[data-img="${CSS.escape(id)}"]`); if (el) el.innerHTML = `<img alt="" src="${Dono.minis[id]}">`;
+    });
+  }
+}
+async function baixarUma(id, btn) {
+  const f = Dono.fotos.find(x => x.id === id); if (!f) return;
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '…';
+  try { const r = await chamar({ acao: 'foto', id }); baixarBlob(new Blob([u8doB64(r.dados)], { type: r.mime }), slug(f.nome) + '.jpg'); }
+  catch (e) { alert('Não consegui baixar agora. Tente de novo.'); }
+  btn.disabled = false; btn.textContent = t;
+}
+const armado = new Map();
+async function apagarUma(id, btn) {
+  if (!armado.get(id)) { armado.set(id, true); btn.textContent = 'Confirmar?'; setTimeout(() => { armado.delete(id); btn.textContent = 'Apagar'; }, 4000); return; }
+  btn.disabled = true;
+  try { await chamar({ acao: 'apagar', id }); Dono.fotos = Dono.fotos.filter(x => x.id !== id); desenharDono(); }
+  catch (e) { btn.disabled = false; btn.textContent = 'Apagar'; }
+}
+async function baixarZip(soVideo) {
+  const lista = Dono.fotos.filter(x => !soVideo || x.ia);
+  if (!lista.length) return;
+  const prog = $('#prog'), tx = $('#progTx'); prog.classList.remove('oculto'); tx.classList.remove('oculto');
+  document.querySelectorAll('.acoes .btn').forEach(b => b.disabled = true);
+  const arquivos = [], linhas = [];
+  try {
+    for (let i = 0; i < lista.length; i++) {
+      const f = lista[i]; tx.textContent = `Preparando ${i + 1} de ${lista.length}…`; prog.firstElementChild.style.width = (i / lista.length * 100) + '%';
+      const r = await chamar({ acao: 'foto', id: f.id });
+      const nome = String(i + 1).padStart(2, '0') + ' - ' + slug(f.nome) + '.jpg';
+      arquivos.push({ nome, dados: u8doB64(r.dados) });
+      linhas.push(`${nome}\nDe: ${f.nome}\nRecado: ${f.recado}\n`);
+    }
+    arquivos.push({ nome: 'recados.txt', dados: new TextEncoder().encode(linhas.join('\n')) });
+    prog.firstElementChild.style.width = '100%'; tx.textContent = 'Pronto! Baixando…';
+    baixarBlob(montarZip(arquivos), `recados-${slug(Album.homenageado)}${soVideo ? '-para-o-video' : ''}.zip`);
+  } catch (e) { tx.textContent = 'Não consegui montar o ZIP agora. Tente de novo.'; }
+  document.querySelectorAll('.acoes .btn').forEach(b => { if (!(b.id === 'bVideo' && !Dono.fotos.some(x => x.ia))) b.disabled = false; });
+}
+
+/* ---------- início ---------- */
+async function iniciar() {
+  if (configurado()) { try { const r = await apiGet({ acao: 'album' }); Object.assign(Album, r.album); } catch (e) {} }
+  if (Album.acessoAte) $('#tDataApagar').textContent = 'até ' + Album.acessoAte.split('-').reverse().join('/');
+  if (location.hash === '#album') return sess.get() ? telaAlbum() : telaEntrar();
+  telaConvidado();
+}
+window.addEventListener('hashchange', iniciar);
+iniciar();
+</script>
+</body>
+</html>
