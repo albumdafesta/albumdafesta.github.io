@@ -24,7 +24,7 @@ const CFG = {
   ACESSO_ATE: '2027-03-31',     // depois desta data tudo é apagado (CONFIRMAR)
   LIMITE_BYTES: 12 * 1024 * 1024,
   LIMITE_MINI_BYTES: 600 * 1024,
-  MAX_ENVIOS_POR_HORA: 20,      // por aparelho
+  MAX_ENVIOS_POR_HORA: 40,      // fotos por hora, por aparelho
   TERMOS_VERSAO: 'recados-2026-11-26.1',
   EMAIL_AVISO: ''               // opcional: recebe um aviso quando alguém envia (deixe vazio para não avisar)
 };
@@ -81,6 +81,8 @@ function enviar_(b) {
   const nome = limpar_(b.nome, 40);
   if (nome.length < 2) return { ok: false, erro: 'Escreva seu nome' };
   const recado = limpar_(b.recado, 400);
+  const legenda = limpar_(b.legenda, 80);                // legenda opcional desta foto
+  const lote = limpar_(b.lote, 40).replace(/[^A-Za-z0-9_-]/g, '');   // agrupa as fotos enviadas juntas pelo mesmo amigo
   const menor = b.menor === true;
   const responsavel = limpar_(b.responsavel, 60);
   if (menor && responsavel.length < 3) return { ok: false, erro: 'Para menores de 18 anos, escreva o nome do responsável' };
@@ -108,7 +110,7 @@ function enviar_(b) {
     if (mb.length <= CFG.LIMITE_MINI_BYTES) mini = subpasta_(pasta, 'miniaturas').createFile(Utilities.newBlob(mb, 'image/jpeg', base + ' (mini).jpg'));
   }
   const foto = {
-    id: arq.getId(), mini: mini ? mini.getId() : '', nome: nome, recado: recado, t: t, mime: mime, bytes: bytes.length,
+    id: arq.getId(), mini: mini ? mini.getId() : '', nome: nome, recado: recado, legenda: legenda, lote: lote, t: t, mime: mime, bytes: bytes.length,
     w: Number(b.w) || 0, h: Number(b.h) || 0, chave: chave,
     menor: menor, responsavel: menor ? responsavel : '',
     ia: ia,                                               // autorizou a foto e o recado no vídeo feito por IA
@@ -153,7 +155,7 @@ function sessaoOuErro_(token) {
 
 function listar_() {
   const fotos = indice_().map(function (f) {
-    return { id: f.id, nome: f.nome, recado: f.recado, t: f.t, ia: !!f.ia, menor: !!f.menor, responsavel: f.responsavel || '', w: f.w, h: f.h, mini: !!f.mini };
+    return { id: f.id, nome: f.nome, recado: f.recado, legenda: f.legenda || '', lote: f.lote || '', t: f.t, ia: !!f.ia, menor: !!f.menor, responsavel: f.responsavel || '', w: f.w, h: f.h, mini: !!f.mini };
   });
   return { ok: true, total: fotos.length, fotos: fotos, homenageado: CFG.HOMENAGEADO, acessoAte: CFG.ACESSO_ATE };
 }
