@@ -33,6 +33,18 @@
 .pg-foto .leg{margin:.9em 0 0;text-align:center;font-style:italic;font-size:clamp(12px,4.4cqw,22px);line-height:1.25;min-height:1.3em;word-break:break-word}
 .pg-foto .de{margin:.3em 0 0;text-align:center;font:700 clamp(10px,3.4cqw,15px)/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#0f5c33}
 .pg-recado .in{justify-content:center}
+.fx-pp{display:flex;align-items:center;justify-content:center;gap:8px;padding:0 14px 6px;font-size:13px;font-weight:700}
+.fx-pp button{min-height:44px;min-width:44px;padding:0 14px;border-radius:99px;border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.25);color:#fff;font:700 14px/1 system-ui,sans-serif;cursor:pointer}
+.fx-pp button[aria-pressed=true]{background:#ffd21f;border-color:#ffd21f;color:#0a0a0a}
+.mosaico{flex:1;min-height:0;display:grid;gap:3.5cqw}
+.mosaico figure{margin:0;min-width:0;min-height:0;display:flex;flex-direction:column}
+.mosaico img{flex:1;min-height:0;width:100%;object-fit:cover;object-position:50% 40%;border:max(3px,1cqw) solid #fff;box-shadow:0 5px 12px -6px rgba(0,0,0,.5);background:#fff;display:block}
+.mosaico figcaption{font-style:italic;font-size:clamp(8px,2.8cqw,13px);line-height:1.2;text-align:center;margin-top:.3em;min-height:1.2em;overflow:hidden;word-break:break-word}
+.mosaico.m2{grid-template-rows:1fr 1fr}
+.mosaico.m3{grid-template-columns:1fr 1fr;grid-template-rows:1.3fr 1fr}.mosaico.m3 figure:first-child{grid-column:span 2}
+.mosaico.m4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.mosaico.m5{grid-template-columns:repeat(6,1fr);grid-template-rows:1fr 1fr}.mosaico.m5 figure:nth-child(-n+2){grid-column:span 3}.mosaico.m5 figure:nth-child(n+3){grid-column:span 2}
+.mosaico.m6{grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr)}
 .pg-recado .sel{align-self:flex-start;background:#ffd21f;color:#0a0a0a;font:800 clamp(10px,3.2cqw,14px)/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:.55em .9em;border-radius:99px}
 .pg-recado h3{font:900 clamp(18px,8cqw,38px)/1.05 'Arial Black',system-ui,sans-serif;margin:.5em 0 .4em;color:#0f5c33}
 .pg-recado blockquote{margin:0;border-left:.35em solid #ffd21f;padding-left:.9em;font-size:clamp(13px,5cqw,24px);line-height:1.35;white-space:pre-wrap;word-break:break-word;overflow:hidden}
@@ -75,37 +87,59 @@
   const trocaFoco = (de) => { try { if (de && de.focus) de.focus(); } catch (e) { /* sem foco para devolver */ } };
 
   /* ================= FLIPBOOK ================= */
+  let porPagina = 6;                       // máximo de fotos do mesmo amigo por página
+  /* divide n fotos em páginas de tamanho parecido (ex.: 7 com máximo 6 vira 4 + 3) */
+  function dividir(n, max) { const pags = Math.ceil(n / max), base = Math.floor(n / pags), extra = n % pags; return Array.from({ length: pags }, (_, i) => base + (i < extra ? 1 : 0)); }
+
   async function flipbook(lista) {
     await Promise.all([carregarMinis(lista.map(f => f.id)), carregarLib()]);
-    const quemAbriu = document.activeElement;
-    const grupos = agrupar(lista), paginas = [];
-    paginas.push(`<div class="pg pg-capa" data-density="hard"><div class="in"><span class="sel">Álbum de recados</span><h1>${esc(Album.homenageado)}</h1><p>${lista.length} ${lista.length === 1 ? 'foto' : 'fotos'} e recados dos amigos</p></div></div>`);
-    const inner = [];
-    grupos.forEach(g => {
-      g.fotos.forEach(f => inner.push(`<div class="pg pg-foto"><div class="in"><div class="moldura">${Dono.minis[f.id] ? `<img alt="Foto de ${esc(g.nome)}" src="${Dono.minis[f.id]}">` : ''}</div><p class="leg">${esc(f.legenda || '')}</p><p class="de">de ${esc(g.nome)}</p></div></div>`));
-      if (g.recado) inner.push(`<div class="pg pg-recado"><div class="in"><span class="sel">Recado</span><h3>${esc(g.nome)}</h3><blockquote class="${g.recado.length > 220 ? 'longo' : ''}">${esc(g.recado)}</blockquote></div></div>`);
-    });
-    if (inner.length % 2) inner.push(`<div class="pg pg-fim"><div class="in"><span>Obrigado, amigos!</span></div></div>`);
-    paginas.push(...inner);
-    paginas.push(`<div class="pg pg-capa" data-density="hard"><div class="in"><span class="sel">Fim</span><h1>${esc(Album.homenageado)}</h1><p>Valeu por fazer parte!</p></div></div>`);
+    const quemAbriu = document.activeElement, grupos = agrupar(lista);
+    const capa = (sel, tit, txt) => `<div class="pg pg-capa" data-density="hard"><div class="in"><span class="sel">${sel}</span><h1>${tit}</h1><p>${txt}</p></div></div>`;
+    const img = (f, nome) => Dono.minis[f.id] ? `<img alt="Foto de ${esc(nome)}" src="${Dono.minis[f.id]}">` : '';
+    const paginasHtml = pp => {
+      const inner = [];
+      grupos.forEach(g => {
+        let i = 0;
+        dividir(g.fotos.length, pp).forEach(n => {
+          const fs = g.fotos.slice(i, i + n); i += n;
+          inner.push(n === 1
+            ? `<div class="pg pg-foto"><div class="in"><div class="moldura">${img(fs[0], g.nome)}</div><p class="leg">${esc(fs[0].legenda || '')}</p><p class="de">de ${esc(g.nome)}</p></div></div>`
+            : `<div class="pg pg-foto"><div class="in"><div class="mosaico m${n}">${fs.map(f => `<figure>${img(f, g.nome)}<figcaption>${esc(f.legenda || '')}</figcaption></figure>`).join('')}</div><p class="de">de ${esc(g.nome)}</p></div></div>`);
+        });
+        if (g.recado) inner.push(`<div class="pg pg-recado"><div class="in"><span class="sel">Recado</span><h3>${esc(g.nome)}</h3><blockquote class="${g.recado.length > 220 ? 'longo' : ''}">${esc(g.recado)}</blockquote></div></div>`);
+      });
+      if (inner.length % 2) inner.push(`<div class="pg pg-fim"><div class="in"><span>Obrigado, amigos!</span></div></div>`);
+      return [capa('Álbum de recados', esc(Album.homenageado), `${lista.length} ${lista.length === 1 ? 'foto' : 'fotos'} e recados dos amigos`), ...inner, capa('Fim', esc(Album.homenageado), 'Valeu por fazer parte!')];
+    };
 
     const ov = document.createElement('div'); ov.className = 'fx-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Álbum digital');
     ov.innerHTML = `<div class="fx-topo"><b>Álbum do ${esc(Album.homenageado)}</b><button class="fx-x" id="fxFechar" aria-label="Fechar o álbum">Fechar ✕</button></div>
-      <div class="fx-palco"><div id="flipLivro">${paginas.join('')}</div></div>
+      <div class="fx-pp" role="group" aria-label="Fotos por página"><span>Fotos por página</span><button data-pp="1" aria-pressed="false">1</button><button data-pp="4" aria-pressed="false">até 4</button><button data-pp="6" aria-pressed="false">até 6</button></div>
+      <div class="fx-palco"></div>
       <div class="fx-nav"><button id="fxPrev" aria-label="Página anterior">‹</button><span id="fxPos" role="status" aria-live="polite"></span><button id="fxNext" aria-label="Próxima página">›</button></div>`;
     document.body.appendChild(ov);
-    const livro = new window.St.PageFlip(q('#flipLivro', ov), {
-      width: 360, height: 500, size: 'stretch', minWidth: 220, maxWidth: 560, minHeight: 320, maxHeight: 780,
-      showCover: true, usePortrait: true, maxShadowOpacity: .5, mobileScrollSupport: false, flippingTime: reduzido() ? 150 : 700, drawShadow: !reduzido()
-    });
-    livro.loadFromHTML(ov.querySelectorAll('.pg'));
-    const total = paginas.length, pos = () => {
+    let livro = null, total = 0;
+    const pos = () => {
       const i = livro.getCurrentPageIndex();
       q('#fxPos', ov).textContent = i === 0 ? 'Capa' : i >= total - 1 ? 'Contracapa' : `Página ${i} de ${total - 2}`;
       q('#fxPrev', ov).disabled = i <= 0; q('#fxNext', ov).disabled = i >= total - 1;
     };
-    livro.on('flip', () => { pos(); Som.tocar('tick'); });
-    pos();
+    const montar = pp => {
+      porPagina = pp;
+      if (livro) { try { livro.destroy(); } catch (e) { /* já removido */ } livro = null; }
+      const paginas = paginasHtml(pp); total = paginas.length;
+      q('.fx-palco', ov).innerHTML = `<div id="flipLivro">${paginas.join('')}</div>`;
+      livro = new window.St.PageFlip(q('#flipLivro', ov), {
+        width: 360, height: 500, size: 'stretch', minWidth: 220, maxWidth: 560, minHeight: 320, maxHeight: 780,
+        showCover: true, usePortrait: true, maxShadowOpacity: .5, mobileScrollSupport: false, flippingTime: reduzido() ? 150 : 700, drawShadow: !reduzido()
+      });
+      livro.loadFromHTML(ov.querySelectorAll('.pg'));
+      livro.on('flip', () => { pos(); Som.tocar('tick'); });
+      ov.querySelectorAll('[data-pp]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.pp === pp)));
+      pos();
+    };
+    montar(porPagina);
+    ov.querySelectorAll('[data-pp]').forEach(b => b.onclick = () => { if (+b.dataset.pp !== porPagina) { montar(+b.dataset.pp); Som.tocar('pick'); } });
     const fechar = () => { document.removeEventListener('keydown', tecla); try { livro.destroy(); } catch (e) { /* já removido */ } ov.remove(); trocaFoco(quemAbriu); };
     const tecla = e => { if (e.key === 'Escape') fechar(); else if (e.key === 'ArrowRight') livro.flipNext(); else if (e.key === 'ArrowLeft') livro.flipPrev(); };
     document.addEventListener('keydown', tecla);
