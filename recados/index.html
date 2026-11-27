@@ -53,6 +53,9 @@ input:focus,textarea:focus,button:focus-visible,label.foto:focus-within{outline:
 .mini.feita::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,92,51,.72);color:#fff;font:800 30px/1 system-ui,sans-serif}
 .mini.feita .rem{display:none}
 .mini.atual{outline:3px solid var(--amarelo);outline-offset:-3px}
+.sobras{margin-top:12px;padding:12px 14px;border:2px dashed var(--amarelo);background:#fff9dc;border-radius:12px;font-size:14px;line-height:1.4}
+.sobras .grade-env{margin-top:10px}.sobras .mini{opacity:.8;box-shadow:none;border:2px dashed #c9a200}
+.sobras .btn{margin-top:10px}
 .cont-fotos{display:block;color:var(--cinza);font-size:13px;margin-top:8px;font-weight:600}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:14px 20px;font:800 16px/1 system-ui,sans-serif;background:var(--preto);color:#fff;cursor:pointer}
 .btn.amarelo{background:var(--amarelo);color:var(--preto)}
@@ -300,6 +303,9 @@ const Album = { homenageado: CONFIG.HOMENAGEADO, envioAberto: true, envioAte: ''
 const MAX_FOTOS = 10;       // por envio
 let fotos = [];             // [{ chave, sig, full:{blob,w,h}, mini:{blob}, url, enviada }]
 let preparando = false, recadoJaFoi = false;
+let sobras = [];            // arquivos que não couberam no envio atual: ficam guardados para o próximo
+const urlSobra = new Map(), enviadasSig = new Set();
+const assinatura = f => [f.name, f.size, f.lastModified].join('|');
 const ICO_CAM = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>';
 const ICO_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 const novaChave = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -308,14 +314,22 @@ function pintarFotos(atual) {
   const area = $('#areaFoto'), vazio = !fotos.length;
   area.classList.toggle('cheia', !vazio);
   $('#fotoTxt').innerHTML = vazio
-    ? `${ICO_CAM}<b>Toque para escolher fotos</b><small>Pode escolher várias de uma vez, da galeria ou da câmera</small>`
+    ? `${ICO_CAM}<b>Toque para escolher fotos</b><small>Pode escolher várias de uma vez (até ${MAX_FOTOS} por envio), da galeria ou da câmera</small>`
     : `${ICO_CAM}<span class="tx2"><b>${preparando ? 'Preparando…' : 'Adicionar mais fotos'}</b></span>`;
   $('#gradeEnv').innerHTML = fotos.map((x, i) => `<div class="mini${x.enviada ? ' feita' : ''}${x === atual ? ' atual' : ''}"><img alt="Foto ${i + 1}" src="${x.url}"><button type="button" class="rem" data-rem="${i}" aria-label="Remover foto ${i + 1}">${ICO_X}</button></div>`).join('');
   document.querySelectorAll('[data-rem]').forEach(b => b.onclick = () => { const x = fotos[+b.dataset.rem]; if (!x || x.enviada) return; URL.revokeObjectURL(x.url); fotos.splice(+b.dataset.rem, 1); pintarFotos(); Som.tocar('tick'); erro(''); });
   const c = $('#contFotos'); c.classList.toggle('oculto', vazio); c.textContent = `${fotos.length} de ${MAX_FOTOS} fotos`;
+  const sb = $('#sobrasBox');
+  sobras.forEach(f => { if (!urlSobra.has(f)) urlSobra.set(f, URL.createObjectURL(f)); });
+  const livres = MAX_FOTOS - fotos.length;
+  sb.classList.toggle('oculto', !sobras.length);
+  sb.innerHTML = sobras.length ? `<b>${sobras.length === 1 ? '1 foto ficou' : sobras.length + ' fotos ficaram'} de fora.</b> Cabem ${MAX_FOTOS} fotos por envio, então ${sobras.length === 1 ? 'ela não entrou' : 'elas não entraram'} agora. Nada se perdeu: ${livres > 0 ? 'toque abaixo para colocar' : 'depois de enviar, toque em “Enviar as que ficaram de fora”'}.
+    <div class="grade-env">${sobras.map(f => `<div class="mini"><img alt="Foto que ficou de fora" src="${urlSobra.get(f)}"></div>`).join('')}</div>
+    ${livres > 0 ? `<button type="button" class="btn sec peq" id="bSobras">Adicionar ${Math.min(livres, sobras.length)} aqui</button>` : ''}` : '';
+  if ($('#bSobras')) $('#bSobras').onclick = () => adicionarArquivos(sobras.splice(0));
   const b = $('#enviar'); if (b && !b.dataset.ocupado) b.textContent = rotuloEnviar();
 }
-function telaConvidado() {
+function telaConvidado(usarSobras) {
   const lembrado = store.get('quem', { nome: '', menor: null, responsavel: '' });
   const aceitou = store.get('termos', null);
   const termosOk = !!(aceitou && aceitou.v === CONFIG.TERMOS_VERSAO);
@@ -332,7 +346,7 @@ function telaConvidado() {
       <div class="campo"><label for="nome">Seu nome</label><input type="text" id="nome" maxlength="40" value="${esc(lembrado.nome)}" placeholder="Como o ${esc(Album.homenageado)} te conhece" autocomplete="given-name"></div>
       <div class="campo"><span class="rot">Suas fotos</span>
         <label class="foto" id="areaFoto" tabindex="0"><input type="file" id="arq" accept="image/*" multiple><span id="fotoTxt"></span></label>
-        <div class="grade-env" id="gradeEnv" aria-label="Fotos escolhidas"></div><span class="cont-fotos oculto" id="contFotos" role="status" aria-live="polite"></span></div>
+        <div class="grade-env" id="gradeEnv" aria-label="Fotos escolhidas"></div><span class="cont-fotos oculto" id="contFotos" role="status" aria-live="polite"></span><div class="sobras oculto" id="sobrasBox" role="status"></div></div>
       <div class="campo"><label for="recado">Seu recado</label><textarea id="recado" maxlength="400" placeholder="Escreva algo para o ${esc(Album.homenageado)}"></textarea><span class="hint"><span id="cont">0</span>/400</span></div>
       <div class="campo"><span class="rot">Sua idade</span>
         <div class="radios"><label><input type="radio" name="idade" value="adulto" ${lembrado.menor === false ? 'checked' : ''}> Tenho 18 anos ou mais</label>
@@ -349,6 +363,7 @@ function telaConvidado() {
   if (!Album.envioAberto) return;
   fotos.forEach(x => URL.revokeObjectURL(x.url)); fotos = []; preparando = false; recadoJaFoi = false;
   pintarFotos();
+  if (usarSobras === true && sobras.length) setTimeout(() => adicionarArquivos(sobras.splice(0)), 0);
   const det = $('#musica');
   det.addEventListener('toggle', () => {
     if (det.open && !$('#musicaIframe')) {      // só carrega o Spotify quando a pessoa abre
@@ -362,28 +377,34 @@ function telaConvidado() {
   $('#recado').oninput = e => $('#cont').textContent = e.target.value.length;
   $('#verTermos').onclick = abrirTermos;
   $('#areaFoto').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#arq').click(); } };
-  $('#arq').onchange = async e => {
-    const escolhidos = [...e.target.files]; e.target.value = '';       // deixa escolher o mesmo arquivo de novo
-    if (!escolhidos.length) return;
-    const assin = f => [f.name, f.size, f.lastModified].join('|');
-    const novos = escolhidos.filter((f, i) => !fotos.some(x => x.sig === assin(f)) && escolhidos.findIndex(g => assin(g) === assin(f)) === i);
-    const cabem = novos.slice(0, Math.max(0, MAX_FOTOS - fotos.length));
-    let falhou = '';
-    erro(''); preparando = true; $('#enviar').disabled = true; pintarFotos();
-    for (const f of cabem) {
-      try {
-        const img = await carregarImg(f);
-        const full = await reduzir(img, CONFIG.MAX_LADO, .86), mini = await reduzir(img, CONFIG.MAX_LADO_MINI, .78);
-        fotos.push({ chave: novaChave(), sig: assin(f), full, mini, url: URL.createObjectURL(full.blob), enviada: false });
-        pintarFotos();
-      } catch (err) { falhou = err.message; }
-    }
-    preparando = false; $('#enviar').disabled = false; pintarFotos();
-    if (cabem.length && fotos.length) Som.tocar('pick');
-    if (falhou) erro(falhou);
-    else if (novos.length > cabem.length) erro(`Cabem ${MAX_FOTOS} fotos por envio. As primeiras foram adicionadas; mande o resto depois.`);
-  };
+  $('#arq').onchange = e => { const arr = [...e.target.files]; e.target.value = ''; adicionarArquivos(arr); };
   $('#enviar').onclick = enviar;
+}
+async function adicionarArquivos(escolhidos) {
+  if (!escolhidos.length || preparando) return;
+  const vistos = new Set(), noLote = new Set(fotos.map(x => x.sig)), novos = [];
+  let repetidas = 0;
+  for (const f of escolhidos) {
+    const a = assinatura(f); if (vistos.has(a)) continue; vistos.add(a);
+    if (noLote.has(a) || enviadasSig.has(a)) { repetidas++; continue; }
+    novos.push(f);
+  }
+  const livres = Math.max(0, MAX_FOTOS - fotos.length), cabem = novos.slice(0, livres), fora = novos.slice(livres);
+  fora.forEach(f => { if (!sobras.some(x => assinatura(x) === assinatura(f))) sobras.push(f); });
+  let falhou = '';
+  erro(''); preparando = true; $('#enviar').disabled = true; pintarFotos();
+  for (const f of cabem) {
+    try {
+      const img = await carregarImg(f);
+      const full = await reduzir(img, CONFIG.MAX_LADO, .86), mini = await reduzir(img, CONFIG.MAX_LADO_MINI, .78);
+      fotos.push({ chave: novaChave(), sig: assinatura(f), full, mini, url: URL.createObjectURL(full.blob), enviada: false });
+      pintarFotos();
+    } catch (err) { falhou = err.message; }
+  }
+  preparando = false; $('#enviar').disabled = false; pintarFotos();
+  if (cabem.length && fotos.length) Som.tocar('pick');
+  if (falhou) erro(falhou);
+  else if (repetidas) erro(`${repetidas === 1 ? '1 foto já estava' : repetidas + ' fotos já estavam'} na lista ou já ${repetidas === 1 ? 'foi enviada' : 'foram enviadas'}, então ${repetidas === 1 ? 'não entrou' : 'não entraram'} de novo.`);
 }
 function erro(m) { const e = $('#erro'); if (!e) return; e.textContent = m; e.classList.toggle('oculto', !m); if (m) { Som.tocar('erro'); e.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }
 
@@ -418,7 +439,7 @@ async function enviar() {
         mime: 'image/jpeg', w: x.full.w, h: x.full.h,
         dados: await base64(x.full.blob), mini: await base64(x.mini.blob), site: $('#site').value
       });
-      x.enviada = true; feitas++; recadoJaFoi = true;
+      x.enviada = true; enviadasSig.add(x.sig); feitas++; recadoJaFoi = true;
     }
     window.onbeforeunload = null; delete btn.dataset.ocupado;
     telaEnviado(feitas);
@@ -434,8 +455,9 @@ function telaEnviado(n = 1) {
   $('#app').innerHTML = `
   <header class="topo"><div class="in"><span class="sel">Álbum de recados</span><h1>Enviado!</h1><p>Seu recado vai direto para quem organizou.</p></div></header>
   <main><div class="card ok"><svg class="check" viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="44" r="42"/><path d="M26 45l12 12 24-26"/></svg><div class="big">Valeu, ${esc((store.get('quem', {}).nome || '').split(' ')[0] || 'amigo')}!</div>
-  <p>${n > 1 ? `Suas ${n} fotos e seu recado foram enviados.` : 'Sua foto e seu recado foram enviados.'} O ${esc(Album.homenageado)} vai ver o que você mandou.</p><p><button class="btn" id="outra">Enviar mais fotos</button></p></div></main>`;
-  $('#outra').onclick = telaConvidado;
+  <p>${n > 1 ? `Suas ${n} fotos e seu recado foram enviados.` : 'Sua foto e seu recado foram enviados.'} O ${esc(Album.homenageado)} vai ver o que você mandou.</p><p>${sobras.length ? `<button class="btn amarelo" id="bResto">Enviar as ${sobras.length} que ficaram de fora</button></p><p>` : ''}<button class="btn ${sobras.length ? 'sec' : ''}" id="outra">Enviar mais fotos</button></p></div></main>`;
+  $('#outra').onclick = () => telaConvidado();
+  if ($('#bResto')) $('#bResto').onclick = () => telaConvidado(true);
   Som.tocar('ok'); confete();
 }
 
