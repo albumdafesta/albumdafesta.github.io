@@ -45,16 +45,22 @@ input:focus,textarea:focus,button:focus-visible,label.foto:focus-within{outline:
 .foto.cheia #fotoTxt .tx2{display:flex;flex-direction:column}
 .grade-env{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
 .grade-env:empty{display:none}
-.mini{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#dfe7dc;box-shadow:0 6px 12px -8px rgba(0,0,0,.55);animation:pula .35s ease-out}
+.mini{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#dfe7dc}
 .mini img{width:100%;height:100%;object-fit:cover;display:block;border-radius:0;max-height:none}
-.mini .rem{position:absolute;top:0;right:0;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
-.mini .rem::before{content:"";position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(10,10,10,.72)}
-.mini .rem svg{position:absolute;top:12px;right:12px;width:14px;height:14px;color:#fff}
-.mini.feita::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,92,51,.72);color:#fff;font:800 30px/1 system-ui,sans-serif}
-.mini.feita .rem{display:none}
-.mini.atual{outline:3px solid var(--amarelo);outline-offset:-3px}
+.lista-env{display:grid;gap:10px;margin-top:12px}
+.lista-env:empty{display:none}
+.fi{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #d9dfd3;border-radius:14px;padding:8px 4px 8px 8px;position:relative;animation:pula .35s ease-out}
+.fi img{width:64px;height:64px;object-fit:cover;border-radius:9px;flex:none;display:block;max-height:none}
+.fi .leg{flex:1;min-width:0}
+.fi .rem{flex:none;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0;position:relative;-webkit-tap-highlight-color:transparent}
+.fi .rem::before{content:"";position:absolute;top:9px;left:9px;width:26px;height:26px;border-radius:50%;background:rgba(10,10,10,.75)}
+.fi .rem svg{position:absolute;top:15px;left:15px;width:14px;height:14px;color:#fff}
+.fi.feita{background:#e9f3ec;border-color:var(--verde)}
+.fi.feita .rem{display:none}
+.fi.feita::after{content:"✓";flex:none;width:44px;text-align:center;font:800 24px/1 system-ui,sans-serif;color:var(--verde)}
+.fi.atual{outline:3px solid var(--amarelo);outline-offset:1px}
 .sobras{margin-top:12px;padding:12px 14px;border:2px dashed var(--amarelo);background:#fff9dc;border-radius:12px;font-size:14px;line-height:1.4}
-.sobras .grade-env{margin-top:10px}.sobras .mini{opacity:.8;box-shadow:none;border:2px dashed #c9a200}
+.sobras .grade-env{margin-top:10px}.sobras .mini{opacity:.85;border:2px dashed #c9a200}
 .sobras .btn{margin-top:10px}
 .cont-fotos{display:block;color:var(--cinza);font-size:13px;margin-top:8px;font-weight:600}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:14px 20px;font:800 16px/1 system-ui,sans-serif;background:var(--preto);color:#fff;cursor:pointer}
@@ -104,15 +110,29 @@ dialog h3{margin:16px 0 4px;font-size:15px}
 dialog p,dialog li{font-size:14px;margin:4px 0}
 /* área de quem contratou */
 .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
-.item{background:#fff;border:1px solid var(--linha);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
-.item .img{aspect-ratio:4/3;background:#e9ece3;display:flex;align-items:center;justify-content:center;color:var(--cinza);font-size:13px}
-.item .img img{width:100%;height:100%;object-fit:cover;display:block}
-.item .tx{padding:12px 14px;flex:1}
-.item .nome{font-weight:800}
-.item .rec{margin:4px 0 0;white-space:pre-wrap;word-break:break-word}
-.item .rod{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 14px 14px}
 .tag{font-size:12px;font-weight:800;border-radius:999px;padding:4px 9px}
 .tag.s{background:#dff3e5;color:#0a5a2c}.tag.n{background:#eceee7;color:#5b655d}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.chip{min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid #c9cfc3;background:#fff;font:700 15px/1 system-ui,sans-serif;color:var(--preto);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--verde);border-color:var(--verde);color:#fff}
+.dica{font-size:14px;color:var(--cinza);margin:0 0 14px}
+.amigo{background:#fff;border:1px solid var(--linha);border-radius:var(--r);padding:14px;margin-bottom:14px;animation:sobe .3s ease-out both}
+.amigo .cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.amigo .nome{font-weight:800;font-size:18px;margin-right:auto}
+.amigo .rec{margin:0 0 12px;white-space:pre-wrap;word-break:break-word;font-style:italic}
+.fotos-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pf{display:flex;flex-direction:column;border:1.5px solid #e1e5da;border-radius:12px;overflow:hidden;background:#fafbf7}
+.pf.marcada{border-color:var(--verde);box-shadow:0 0 0 2px var(--verde)}
+.pf .img{position:relative;aspect-ratio:4/3;background:#e9ece3;display:flex;align-items:center;justify-content:center;color:var(--cinza);font-size:13px}
+.pf .img img{width:100%;height:100%;object-fit:cover;display:block;animation:sobe .3s ease-out both}
+.pf .marca{position:absolute;top:0;left:0;width:48px;height:48px;display:flex;align-items:center;justify-content:center;margin:0;cursor:pointer}
+.pf .marca input{width:24px;height:24px;accent-color:var(--verde)}
+.pf .leg{padding:8px 10px 0;font-size:13px;min-height:20px;word-break:break-word}
+.pf .rod{display:flex;gap:6px;padding:8px 10px 10px}
+.pf .rod .btn{flex:1;padding:9px 6px}
+.todas-amigo{font-size:14px;font-weight:700;display:flex;gap:6px;margin:0;cursor:pointer;min-height:44px;align-items:center}
+.todas-amigo input{width:20px;height:20px;accent-color:var(--verde)}
+main.wide:has(.barra){padding-bottom:96px}
 .wide{max-width:1040px}
 main.wide{margin-top:0;padding-top:20px}
 .acoes{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
@@ -163,7 +183,7 @@ const CONFIG = {
   TERMOS_VERSAO: 'recados-2026-11-26.1',  // igual a CFG.TERMOS_VERSAO do Recados.gs
   HOMENAGEADO: 'Caio',
   SPOTIFY_EMBED: 'https://open.spotify.com/embed/artist/53XhwfbYqKCa1cC15pYq2q?theme=0',   // Imagine Dragons (artista oficial)
-  MAX_LADO: 2000,
+  MAX_LADO: 2400,
   MAX_LADO_MINI: 640
 };
 const $ = (s, r = document) => r.querySelector(s);
@@ -302,7 +322,7 @@ const Album = { homenageado: CONFIG.HOMENAGEADO, envioAberto: true, envioAte: ''
 /* ---------- tela do convidado ---------- */
 const MAX_FOTOS = 10;       // por envio
 let fotos = [];             // [{ chave, sig, full:{blob,w,h}, mini:{blob}, url, enviada }]
-let preparando = false, recadoJaFoi = false;
+let preparando = false, lote = '', ultimoRecado = '';
 let sobras = [];            // arquivos que não couberam no envio atual: ficam guardados para o próximo
 const urlSobra = new Map(), enviadasSig = new Set();
 const assinatura = f => [f.name, f.size, f.lastModified].join('|');
@@ -316,9 +336,10 @@ function pintarFotos(atual) {
   $('#fotoTxt').innerHTML = vazio
     ? `${ICO_CAM}<b>Toque para escolher fotos</b><small>Pode escolher várias de uma vez (até ${MAX_FOTOS} por envio), da galeria ou da câmera</small>`
     : `${ICO_CAM}<span class="tx2"><b>${preparando ? 'Preparando…' : 'Adicionar mais fotos'}</b></span>`;
-  $('#gradeEnv').innerHTML = fotos.map((x, i) => `<div class="mini${x.enviada ? ' feita' : ''}${x === atual ? ' atual' : ''}"><img alt="Foto ${i + 1}" src="${x.url}"><button type="button" class="rem" data-rem="${i}" aria-label="Remover foto ${i + 1}">${ICO_X}</button></div>`).join('');
+  $('#gradeEnv').innerHTML = fotos.map((x, i) => `<div class="fi${x.enviada ? ' feita' : ''}${x === atual ? ' atual' : ''}"><img alt="Foto ${i + 1}" src="${x.url}"><input type="text" class="leg" maxlength="80" data-leg="${i}" placeholder="Legenda (opcional)" aria-label="Legenda da foto ${i + 1}" value="${esc(x.legenda || '')}" ${x.enviada ? 'disabled' : ''}><button type="button" class="rem" data-rem="${i}" aria-label="Remover foto ${i + 1}">${ICO_X}</button></div>`).join('');
+  document.querySelectorAll('[data-leg]').forEach(inp => inp.oninput = () => { const x = fotos[+inp.dataset.leg]; if (x) x.legenda = inp.value; });
   document.querySelectorAll('[data-rem]').forEach(b => b.onclick = () => { const x = fotos[+b.dataset.rem]; if (!x || x.enviada) return; URL.revokeObjectURL(x.url); fotos.splice(+b.dataset.rem, 1); pintarFotos(); Som.tocar('tick'); erro(''); });
-  const c = $('#contFotos'); c.classList.toggle('oculto', vazio); c.textContent = `${fotos.length} de ${MAX_FOTOS} fotos`;
+  const c = $('#contFotos'); c.classList.toggle('oculto', vazio); c.textContent = `${fotos.length} de ${MAX_FOTOS} fotos · a legenda é opcional`;
   const sb = $('#sobrasBox');
   sobras.forEach(f => { if (!urlSobra.has(f)) urlSobra.set(f, URL.createObjectURL(f)); });
   const livres = MAX_FOTOS - fotos.length;
@@ -346,7 +367,7 @@ function telaConvidado(usarSobras) {
       <div class="campo"><label for="nome">Seu nome</label><input type="text" id="nome" maxlength="40" value="${esc(lembrado.nome)}" placeholder="Como o ${esc(Album.homenageado)} te conhece" autocomplete="given-name"></div>
       <div class="campo"><span class="rot">Suas fotos</span>
         <label class="foto" id="areaFoto" tabindex="0"><input type="file" id="arq" accept="image/*" multiple><span id="fotoTxt"></span></label>
-        <div class="grade-env" id="gradeEnv" aria-label="Fotos escolhidas"></div><span class="cont-fotos oculto" id="contFotos" role="status" aria-live="polite"></span><div class="sobras oculto" id="sobrasBox" role="status"></div></div>
+        <div class="lista-env" id="gradeEnv" aria-label="Fotos escolhidas"></div><span class="cont-fotos oculto" id="contFotos" role="status" aria-live="polite"></span><div class="sobras oculto" id="sobrasBox" role="status"></div></div>
       <div class="campo"><label for="recado">Seu recado</label><textarea id="recado" maxlength="400" placeholder="Escreva algo para o ${esc(Album.homenageado)}"></textarea><span class="hint"><span id="cont">0</span>/400</span></div>
       <div class="campo"><span class="rot">Sua idade</span>
         <div class="radios"><label><input type="radio" name="idade" value="adulto" ${lembrado.menor === false ? 'checked' : ''}> Tenho 18 anos ou mais</label>
@@ -361,8 +382,10 @@ function telaConvidado(usarSobras) {
   </main>
   ${Album.envioAberto ? `<div class="barra"><div class="in"><button class="btn amarelo" id="enviar" data-som="none">Enviar para o ${esc(Album.homenageado)}</button></div></div>` : ''}`;
   if (!Album.envioAberto) return;
-  fotos.forEach(x => URL.revokeObjectURL(x.url)); fotos = []; preparando = false; recadoJaFoi = false;
+  fotos.forEach(x => URL.revokeObjectURL(x.url)); fotos = []; preparando = false;
+  if (usarSobras !== true) lote = novaChave();       // enviar as que sobraram continua no mesmo grupo
   pintarFotos();
+  if (usarSobras === true && ultimoRecado) { $('#recado').value = ultimoRecado; $('#cont').textContent = ultimoRecado.length; }
   if (usarSobras === true && sobras.length) setTimeout(() => adicionarArquivos(sobras.splice(0)), 0);
   const det = $('#musica');
   det.addEventListener('toggle', () => {
@@ -415,7 +438,7 @@ async function enviar() {
   if (preparando) return erro('Aguarde um instante, ainda estou preparando as fotos.');
   if (nome.length < 2) return erro('Escreva seu nome.');
   if (!fotos.length) return erro('Escolha pelo menos uma foto.');
-  if (!recado && !recadoJaFoi) return erro('Escreva um recado.');
+  if (!recado) return erro('Escreva um recado.');
   if (!idade) return erro('Diga se você tem 18 anos ou mais.');
   if (idade === 'menor' && resp.length < 3) return erro('Para menores de 18 anos, escreva o nome do responsável.');
   if (!$('#cTermos').checked) return erro('Para enviar, marque que leu e concorda com os termos.');
@@ -434,12 +457,12 @@ async function enviar() {
       btn.textContent = `Enviando ${feitas + 1} de ${total}…`; pintarFotos(x);
       await apiPostRetry({
         acao: 'enviar', dispositivo: idAparelho(), aceite, chave: x.chave,
-        nome, recado: recadoJaFoi ? '' : recado,                       // o recado vai junto com a primeira foto; as outras só levam o nome
+        nome, recado, legenda: (x.legenda || '').trim(), lote,          // o mesmo recado vai com todas as fotos; o álbum mostra uma vez só por amigo
         menor: idade === 'menor', responsavel: idade === 'menor' ? resp : '', autorizaIA: $('#cIA').checked,
         mime: 'image/jpeg', w: x.full.w, h: x.full.h,
         dados: await base64(x.full.blob), mini: await base64(x.mini.blob), site: $('#site').value
       });
-      x.enviada = true; enviadasSig.add(x.sig); feitas++; recadoJaFoi = true;
+      x.enviada = true; enviadasSig.add(x.sig); feitas++; ultimoRecado = recado;
     }
     window.onbeforeunload = null; delete btn.dataset.ocupado;
     telaEnviado(feitas);
@@ -462,7 +485,7 @@ function telaEnviado(n = 1) {
 }
 
 /* ---------- área de quem contratou ---------- */
-const Dono = { fotos: [], minis: {}, homenageado: '', acessoAte: '' };
+const Dono = { fotos: [], minis: {}, homenageado: '', acessoAte: '', sel: new Set(), filtro: 'todas' };
 function telaEntrar(msg) {
   $('#app').innerHTML = `
   <header class="topo"><div class="in"><span class="sel">Área privada</span><h1>Álbum do ${esc(Album.homenageado)}</h1><p>Entre com a senha que você recebeu.</p></div></header>
@@ -484,33 +507,63 @@ async function telaAlbum() {
   $('#app').innerHTML = `<header class="topo"><div class="in wide"><span class="sel">Área privada</span><h1>Álbum do ${esc(Album.homenageado)}</h1><p id="resumo">Carregando…</p></div></header><main class="wide"><div id="corpo"></div></main>`;
   let r;
   try { r = await chamar({ acao: 'listar' }); } catch (e) { return; }
-  Dono.fotos = r.fotos.sort((a, b) => a.t - b.t); Dono.minis = {}; Dono.acessoAte = r.acessoAte;
+  Dono.fotos = r.fotos.sort((a, b) => a.t - b.t); Dono.minis = {}; Dono.acessoAte = r.acessoAte; Dono.sel = new Set(); Dono.filtro = 'todas';
   desenharDono();
   carregarMinis();
 }
+/* agrupa as fotos por amigo (mesmo envio = mesmo lote) */
+function agrupar(lista) {
+  const mapa = new Map();
+  lista.forEach(f => {
+    const k = f.lote || ('x' + f.id);
+    if (!mapa.has(k)) mapa.set(k, { chave: k, nome: f.nome, recado: '', ia: !!f.ia, menor: !!f.menor, responsavel: f.responsavel || '', fotos: [] });
+    const g = mapa.get(k); g.fotos.push(f); if (!g.recado && f.recado) g.recado = f.recado;
+  });
+  return [...mapa.values()];
+}
+const visiveis = () => Dono.fotos.filter(f => Dono.filtro === 'video' ? f.ia : Dono.filtro === 'sel' ? Dono.sel.has(f.id) : true);
+const alvo = () => Dono.sel.size ? Dono.fotos.filter(f => Dono.sel.has(f.id)) : visiveis();
 function desenharDono() {
-  const f = Dono.fotos, nIA = f.filter(x => x.ia).length;
-  $('#resumo').textContent = f.length ? `${f.length} ${f.length === 1 ? 'foto' : 'fotos'} · ${nIA} no vídeo · ${f.length - nIA} fora do vídeo` : 'Ainda não chegou nenhuma foto.';
+  const f = Dono.fotos, nIA = f.filter(x => x.ia).length, nAmigos = agrupar(f).length, vis = visiveis(), grupos = agrupar(vis);
+  $('#resumo').textContent = f.length ? `${f.length} ${f.length === 1 ? 'foto' : 'fotos'} de ${nAmigos} ${nAmigos === 1 ? 'amigo' : 'amigos'} · ${nIA} autorizadas para o vídeo` : 'Ainda não chegou nenhuma foto.';
+  const n = alvo().length, tem = f.length > 0, rotulo = Dono.sel.size ? `${n} selecionada${n === 1 ? '' : 's'}` : `${n} do filtro`;
   $('#corpo').innerHTML = `
-  ${f.length ? `<div class="acoes"><button class="btn" id="bTodas">Baixar tudo (ZIP)</button><button class="btn sec" id="bVideo" ${nIA ? '' : 'disabled'}>Baixar só os do vídeo (ZIP)</button><button class="btn sec" id="sair">Sair</button></div>
-  <div class="prog oculto" id="prog"><i></i></div><p class="hint oculto" id="progTx"></p>` : `<div class="acoes"><button class="btn sec" id="sair">Sair</button></div>`}
-  <div class="grade">${f.map(x => `<article class="item" data-id="${esc(x.id)}"><div class="img" data-img="${esc(x.id)}">${Dono.minis[x.id] ? `<img alt="Foto de ${esc(x.nome)}" src="${Dono.minis[x.id]}">` : 'carregando…'}</div>
-    <div class="tx"><div class="nome">${esc(x.nome)}</div><p class="rec">${x.recado ? esc(x.recado) : '<i>Sem recado nesta foto (veja as outras fotos deste amigo).</i>'}</p></div>
-    <div class="rod"><span class="tag ${x.ia ? 's' : 'n'}">${x.ia ? 'No vídeo' : 'Fora do vídeo'}</span>${x.menor ? `<span class="tag n" title="Responsável: ${esc(x.responsavel)}">Menor de 18</span>` : ''}
-      <button class="btn sec peq" data-baixar="${esc(x.id)}">Baixar</button><button class="btn sec peq" data-apagar="${esc(x.id)}" data-som="none">Apagar</button></div></article>`).join('')}</div>
+  ${tem ? `<div class="filtros" role="group" aria-label="Filtro">
+    <button class="chip" data-filtro="todas" aria-pressed="${Dono.filtro === 'todas'}">Todas (${f.length})</button>
+    <button class="chip" data-filtro="video" aria-pressed="${Dono.filtro === 'video'}" title="Fotos autorizadas para o vídeo">No vídeo (${nIA})</button>
+    <button class="chip" data-filtro="sel" aria-pressed="${Dono.filtro === 'sel'}">Marcadas (${Dono.sel.size})</button></div>
+  <div class="acoes"><button class="btn peq" data-acao="zip">Baixar ZIP (${n})</button><button class="btn sec peq" data-acao="flip">Ver álbum</button><button class="btn sec peq" data-acao="imp">Imprimir</button></div>
+  <div class="acoes"><button class="btn sec peq" id="bTodasSel">${Dono.sel.size >= vis.length && vis.length ? 'Limpar seleção' : 'Selecionar todas'}</button><button class="btn sec peq" id="sair">Sair</button></div>
+  <div class="prog oculto" id="prog"><i></i></div><p class="hint oculto" id="progTx"></p>
+  <p class="dica">${Dono.sel.size ? 'Os botões usam só as fotos marcadas.' : 'Nada marcado: os botões usam todas as fotos do filtro atual. Marque as fotos para escolher.'}${Dono.filtro === 'video' ? ' O vídeo é montado à parte; aqui você só separa e baixa as fotos autorizadas.' : ''}</p>
+  ${Dono.sel.size ? `<div class="barra"><div class="in" style="display:flex;gap:8px"><button class="btn peq" data-acao="zip" style="flex:1">Baixar (${n})</button><button class="btn sec peq" data-acao="flip" style="flex:1">Ver álbum</button><button class="btn sec peq" data-acao="imp" style="flex:1">Imprimir</button></div></div>` : ''}`
+  : `<div class="acoes"><button class="btn sec" id="sair">Sair</button></div>`}
+  ${grupos.map(g => `<section class="amigo" data-g="${esc(g.chave)}"><div class="cab"><span class="nome">${esc(g.nome)}</span>
+      <span class="tag ${g.ia ? 's' : 'n'}">${g.ia ? 'No vídeo' : 'Fora do vídeo'}</span>${g.menor ? `<span class="tag n" title="Responsável: ${esc(g.responsavel)}">Menor de 18</span>` : ''}
+      <label class="todas-amigo"><input type="checkbox" data-grupo="${esc(g.chave)}" ${g.fotos.every(x => Dono.sel.has(x.id)) ? 'checked' : ''}> Todas deste amigo</label></div>
+    ${g.recado ? `<p class="rec">${esc(g.recado)}</p>` : ''}
+    <div class="fotos-g">${g.fotos.map(x => `<article class="pf${Dono.sel.has(x.id) ? ' marcada' : ''}"><div class="img" data-img="${esc(x.id)}"><label class="marca"><input type="checkbox" data-sel="${esc(x.id)}" ${Dono.sel.has(x.id) ? 'checked' : ''} aria-label="Selecionar foto de ${esc(x.nome)}"></label>${Dono.minis[x.id] ? `<img alt="Foto de ${esc(x.nome)}" src="${Dono.minis[x.id]}">` : '<span class="ph">carregando…</span>'}</div>
+      <div class="leg">${x.legenda ? esc(x.legenda) : ''}</div>
+      <div class="rod"><button class="btn sec peq" data-baixar="${esc(x.id)}">Baixar</button><button class="btn sec peq" data-apagar="${esc(x.id)}" data-som="none">Apagar</button></div></article>`).join('')}</div></section>`).join('')}
+  ${tem && !grupos.length ? '<p class="dica">Nenhuma foto neste filtro.</p>' : ''}
   <p class="hint" style="margin-top:18px">As fotos ficam disponíveis até ${esc(Dono.acessoAte.split('-').reverse().join('/'))} e depois são apagadas. Baixe antes dessa data.</p>`;
   $('#sair').onclick = () => { sess.set(''); telaEntrar(); };
-  if ($('#bTodas')) { $('#bTodas').onclick = () => baixarZip(false); $('#bVideo').onclick = () => baixarZip(true); }
+  document.querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => { Dono.filtro = b.dataset.filtro; desenharDono(); });
+  document.querySelectorAll('[data-sel]').forEach(c => c.onchange = () => { c.checked ? Dono.sel.add(c.dataset.sel) : Dono.sel.delete(c.dataset.sel); desenharDono(); });
+  document.querySelectorAll('[data-grupo]').forEach(c => c.onchange = () => { const g = agrupar(vis).find(x => x.chave === c.dataset.grupo); if (g) g.fotos.forEach(x => c.checked ? Dono.sel.add(x.id) : Dono.sel.delete(x.id)); desenharDono(); });
+  if ($('#bTodasSel')) $('#bTodasSel').onclick = () => { if (Dono.sel.size >= vis.length && vis.length) Dono.sel.clear(); else vis.forEach(x => Dono.sel.add(x.id)); desenharDono(); };
+  document.querySelectorAll('[data-acao]').forEach(b => b.onclick = () => b.dataset.acao === 'zip' ? baixarZip(alvo()) : abrirExtra(b.dataset.acao === 'flip' ? 'flipbook' : 'impressao'));
   document.querySelectorAll('[data-baixar]').forEach(b => b.onclick = () => baixarUma(b.dataset.baixar, b));
   document.querySelectorAll('[data-apagar]').forEach(b => b.onclick = () => apagarUma(b.dataset.apagar, b));
 }
-async function carregarMinis() {
-  const falta = Dono.fotos.map(f => f.id).filter(id => !Dono.minis[id]);
+async function carregarMinis(ids) {
+  const falta = (ids || Dono.fotos.map(f => f.id)).filter(id => !Dono.minis[id]);
   for (let i = 0; i < falta.length; i += 12) {
     let r; try { r = await chamar({ acao: 'miniaturas', ids: falta.slice(i, i + 12) }); } catch (e) { return; }
     Object.keys(r.minis).forEach(id => {
       Dono.minis[id] = 'data:image/jpeg;base64,' + r.minis[id];
-      const el = document.querySelector(`[data-img="${CSS.escape(id)}"]`); if (el) el.innerHTML = `<img alt="" src="${Dono.minis[id]}">`;
+      const el = document.querySelector(`[data-img="${CSS.escape(id)}"]`);
+      if (el) { const ph = el.querySelector('.ph'); if (ph) ph.remove(); if (!el.querySelector('img')) el.insertAdjacentHTML('beforeend', `<img alt="" src="${Dono.minis[id]}">`); }
     });
   }
 }
@@ -525,28 +578,42 @@ const armado = new Map();
 async function apagarUma(id, btn) {
   if (!armado.get(id)) { armado.set(id, true); btn.textContent = 'Confirmar?'; Som.tocar('tick'); setTimeout(() => { armado.delete(id); btn.textContent = 'Apagar'; }, 4000); return; }
   btn.disabled = true;
-  try { await chamar({ acao: 'apagar', id }); Som.tocar('apaga'); Dono.fotos = Dono.fotos.filter(x => x.id !== id); desenharDono(); }
+  try { await chamar({ acao: 'apagar', id }); Som.tocar('apaga'); Dono.fotos = Dono.fotos.filter(x => x.id !== id); Dono.sel.delete(id); desenharDono(); }
   catch (e) { btn.disabled = false; btn.textContent = 'Apagar'; }
 }
-async function baixarZip(soVideo) {
-  const lista = Dono.fotos.filter(x => !soVideo || x.ia);
+/* texto com os recados, agrupado por amigo; nomes = { idDaFoto: 'arquivo.jpg' } */
+function montarTxt(lista, nomes) {
+  return agrupar(lista).map(g => `De: ${g.nome}\nRecado: ${g.recado || '(sem recado)'}\n` + g.fotos.map(x => `  - ${nomes[x.id] || x.id}${x.legenda ? ' — ' + x.legenda : ''}`).join('\n') + '\n').join('\n');
+}
+async function baixarZip(lista) {
   if (!lista.length) return;
   const prog = $('#prog'), tx = $('#progTx'); prog.classList.remove('oculto'); tx.classList.remove('oculto');
-  document.querySelectorAll('.acoes .btn').forEach(b => b.disabled = true);
-  const arquivos = [], linhas = [];
+  document.querySelectorAll('.acoes .btn, .barra .btn').forEach(b => b.disabled = true);
+  const arquivos = [], nomes = {};
   try {
     for (let i = 0; i < lista.length; i++) {
       const f = lista[i]; tx.textContent = `Preparando ${i + 1} de ${lista.length}…`; prog.firstElementChild.style.width = (i / lista.length * 100) + '%';
       const r = await chamar({ acao: 'foto', id: f.id });
       const nome = String(i + 1).padStart(2, '0') + ' - ' + slug(f.nome) + '.jpg';
-      arquivos.push({ nome, dados: u8doB64(r.dados) });
-      linhas.push(`${nome}\nDe: ${f.nome}\nRecado: ${f.recado || '(sem recado nesta foto)'}\n`);
+      arquivos.push({ nome, dados: u8doB64(r.dados) }); nomes[f.id] = nome;
     }
-    arquivos.push({ nome: 'recados.txt', dados: new TextEncoder().encode(linhas.join('\n')) });
+    arquivos.push({ nome: 'recados.txt', dados: new TextEncoder().encode(montarTxt(lista, nomes)) });
     prog.firstElementChild.style.width = '100%'; tx.textContent = 'Pronto! Baixando…'; Som.tocar('pronto');
-    baixarBlob(montarZip(arquivos), `recados-${slug(Album.homenageado)}${soVideo ? '-para-o-video' : ''}.zip`);
+    baixarBlob(montarZip(arquivos), `recados-${slug(Album.homenageado)}${Dono.filtro === 'video' ? '-autorizadas-video' : ''}.zip`);
   } catch (e) { tx.textContent = 'Não consegui montar o ZIP agora. Tente de novo.'; }
-  document.querySelectorAll('.acoes .btn').forEach(b => { if (!(b.id === 'bVideo' && !Dono.fotos.some(x => x.ia))) b.disabled = false; });
+  document.querySelectorAll('.acoes .btn, .barra .btn').forEach(b => b.disabled = false);
+}
+/* flipbook e impressão ficam em outro arquivo, carregado só quando a pessoa pede */
+const extras = {};
+async function abrirExtra(qual) {
+  const lista = alvo(); if (!lista.length) return;
+  const tx = $('#progTx'); tx.classList.remove('oculto'); tx.textContent = 'Abrindo…';
+  try {
+    if (!extras.album) extras.album = new Promise((ok, falha) => { const sc = document.createElement('script'); sc.src = 'album.js?v=1'; sc.onload = ok; sc.onerror = () => { extras.album = null; falha(new Error('script')); }; document.head.appendChild(sc); });
+    await extras.album;
+    await (qual === 'flipbook' ? window.AlbumExtra.flipbook(lista) : window.AlbumExtra.impressao(lista));
+    tx.classList.add('oculto');
+  } catch (e) { tx.textContent = 'Não consegui abrir agora. Confira a internet e tente de novo.'; }
 }
 
 /* ---------- início ---------- */
