@@ -39,10 +39,21 @@ input:focus,textarea:focus,button:focus-visible,label.foto:focus-within{outline:
 #fotoTxt{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}
 #fotoTxt .ico{width:44px;height:44px;border-radius:50%;background:var(--verde);color:var(--amarelo);display:flex;align-items:center;justify-content:center;margin-bottom:4px}
 #fotoTxt .ico svg{width:24px;height:24px}
-.pola{display:block;background:#fff;padding:10px 10px 28px;border-radius:4px;box-shadow:0 10px 22px -10px rgba(0,0,0,.45);transform:rotate(-1.6deg);position:relative;max-width:86%}
-.pola::before{content:"";position:absolute;top:-10px;left:50%;width:70px;height:22px;transform:translateX(-50%) rotate(2deg);background:rgba(255,210,31,.75);box-shadow:0 1px 2px rgba(0,0,0,.15)}
-.pola img{max-height:260px;border-radius:2px}
-.foto:has(.pola){border-style:solid;background:#e9f3ec}
+.foto.cheia{padding:14px 12px;border-style:solid;background:#e9f3ec;flex-direction:row;gap:10px}
+.foto.cheia .ico{width:34px;height:34px;margin:0}.foto.cheia .ico svg{width:20px;height:20px}
+.foto.cheia #fotoTxt{flex-direction:row;justify-content:center;gap:10px;width:auto;text-align:left}
+.foto.cheia #fotoTxt .tx2{display:flex;flex-direction:column}
+.grade-env{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.grade-env:empty{display:none}
+.mini{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#dfe7dc;box-shadow:0 6px 12px -8px rgba(0,0,0,.55);animation:pula .35s ease-out}
+.mini img{width:100%;height:100%;object-fit:cover;display:block;border-radius:0;max-height:none}
+.mini .rem{position:absolute;top:0;right:0;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
+.mini .rem::before{content:"";position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(10,10,10,.72)}
+.mini .rem svg{position:absolute;top:12px;right:12px;width:14px;height:14px;color:#fff}
+.mini.feita::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,92,51,.72);color:#fff;font:800 30px/1 system-ui,sans-serif}
+.mini.feita .rem{display:none}
+.mini.atual{outline:3px solid var(--amarelo);outline-offset:-3px}
+.cont-fotos{display:block;color:var(--cinza);font-size:13px;margin-top:8px;font-weight:600}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:14px 20px;font:800 16px/1 system-ui,sans-serif;background:var(--preto);color:#fff;cursor:pointer}
 .btn.amarelo{background:var(--amarelo);color:var(--preto)}
 .btn.sec{background:#fff;color:var(--preto);border:1.5px solid var(--preto)}
@@ -125,11 +136,11 @@ main.wide{margin-top:0;padding-top:20px}
 
 <dialog id="dlgTermos"><div class="c">
   <h2>Termos e privacidade</h2>
-  <p>Este álbum é um presente: amigos e familiares mandam uma foto e um recado para <b class="homenageado">o aniversariante</b>.</p>
+  <p>Este álbum é um presente: amigos e familiares mandam fotos e um recado para <b class="homenageado">o aniversariante</b>.</p>
   <h3>Quem vê o que você envia</h3>
   <p>Somente quem contratou o álbum, com senha própria. Os outros convidados <b>não veem</b> as fotos nem os recados uns dos outros. Não publicamos, não vendemos e não damos a fotos ou recados a ninguém.</p>
   <h3>Que dados guardamos</h3>
-  <p>A foto, o seu nome, o recado, a data do envio e as autorizações que você marcar abaixo. Se você tem menos de 18 anos, também guardamos o nome do responsável que autorizou.</p>
+  <p>As fotos, o seu nome, o recado, a data do envio e as autorizações que você marcar abaixo. Se você tem menos de 18 anos, também guardamos o nome do responsável que autorizou.</p>
   <h3>Menores de 18 anos</h3>
   <p>A lei (LGPD) exige que um pai, mãe ou responsável legal autorize o uso de dados e imagem de crianças e adolescentes. Por isso, quem tem menos de 18 anos precisa de um responsável para enviar. O responsável pode pedir a exclusão a qualquer momento.</p>
   <h3>Vídeo com inteligência artificial (opcional)</h3>
@@ -286,14 +297,31 @@ $('#fecharTermos').onclick = () => $('#dlgTermos').close();
 const Album = { homenageado: CONFIG.HOMENAGEADO, envioAberto: true, envioAte: '' };
 
 /* ---------- tela do convidado ---------- */
-let fotoEscolhida = null;   // { full:{blob,w,h}, mini:{blob}, url }
+const MAX_FOTOS = 10;       // por envio
+let fotos = [];             // [{ chave, sig, full:{blob,w,h}, mini:{blob}, url, enviada }]
+let preparando = false, recadoJaFoi = false;
+const ICO_CAM = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>';
+const ICO_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+const novaChave = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const rotuloEnviar = () => { const n = fotos.filter(x => !x.enviada).length || fotos.length; return n > 1 ? `Enviar ${n} fotos para o ${Album.homenageado}` : `Enviar para o ${Album.homenageado}`; };
+function pintarFotos(atual) {
+  const area = $('#areaFoto'), vazio = !fotos.length;
+  area.classList.toggle('cheia', !vazio);
+  $('#fotoTxt').innerHTML = vazio
+    ? `${ICO_CAM}<b>Toque para escolher fotos</b><small>Pode escolher várias de uma vez, da galeria ou da câmera</small>`
+    : `${ICO_CAM}<span class="tx2"><b>${preparando ? 'Preparando…' : 'Adicionar mais fotos'}</b></span>`;
+  $('#gradeEnv').innerHTML = fotos.map((x, i) => `<div class="mini${x.enviada ? ' feita' : ''}${x === atual ? ' atual' : ''}"><img alt="Foto ${i + 1}" src="${x.url}"><button type="button" class="rem" data-rem="${i}" aria-label="Remover foto ${i + 1}">${ICO_X}</button></div>`).join('');
+  document.querySelectorAll('[data-rem]').forEach(b => b.onclick = () => { const x = fotos[+b.dataset.rem]; if (!x || x.enviada) return; URL.revokeObjectURL(x.url); fotos.splice(+b.dataset.rem, 1); pintarFotos(); Som.tocar('tick'); erro(''); });
+  const c = $('#contFotos'); c.classList.toggle('oculto', vazio); c.textContent = `${fotos.length} de ${MAX_FOTOS} fotos`;
+  const b = $('#enviar'); if (b && !b.dataset.ocupado) b.textContent = rotuloEnviar();
+}
 function telaConvidado() {
   const lembrado = store.get('quem', { nome: '', menor: null, responsavel: '' });
   const aceitou = store.get('termos', null);
   const termosOk = !!(aceitou && aceitou.v === CONFIG.TERMOS_VERSAO);
   $('#app').innerHTML = `
   <header class="topo"><div class="in"><span class="sel">Álbum de recados</span>
-    <h1>Mande uma foto e um recado para o ${esc(Album.homenageado)}</h1>
+    <h1>Mande suas fotos e um recado para o ${esc(Album.homenageado)}</h1>
     <p>Só quem organizou o álbum vê o que você enviar.</p></div></header>
   <main>
     ${!Album.envioAberto ? `<div class="card"><b>O envio terminou.</b> Obrigado a quem participou!</div>` : `
@@ -302,23 +330,25 @@ function telaConvidado() {
       <div id="musicaBox"></div><p class="hint aviso-sp">Sem entrar no Spotify, toca um trecho de 30 segundos de cada música.</p></details>
     <form id="f" class="card" autocomplete="off" novalidate>
       <div class="campo"><label for="nome">Seu nome</label><input type="text" id="nome" maxlength="40" value="${esc(lembrado.nome)}" placeholder="Como o ${esc(Album.homenageado)} te conhece" autocomplete="given-name"></div>
-      <div class="campo"><span class="rot">Sua foto</span>
-        <label class="foto" id="areaFoto" tabindex="0"><input type="file" id="arq" accept="image/*"><span id="fotoTxt"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><b>Toque para escolher uma foto</b><small>Da galeria ou da câmera</small></span></label></div>
+      <div class="campo"><span class="rot">Suas fotos</span>
+        <label class="foto" id="areaFoto" tabindex="0"><input type="file" id="arq" accept="image/*" multiple><span id="fotoTxt"></span></label>
+        <div class="grade-env" id="gradeEnv" aria-label="Fotos escolhidas"></div><span class="cont-fotos oculto" id="contFotos" role="status" aria-live="polite"></span></div>
       <div class="campo"><label for="recado">Seu recado</label><textarea id="recado" maxlength="400" placeholder="Escreva algo para o ${esc(Album.homenageado)}"></textarea><span class="hint"><span id="cont">0</span>/400</span></div>
       <div class="campo"><span class="rot">Sua idade</span>
         <div class="radios"><label><input type="radio" name="idade" value="adulto" ${lembrado.menor === false ? 'checked' : ''}> Tenho 18 anos ou mais</label>
         <label><input type="radio" name="idade" value="menor" ${lembrado.menor === true ? 'checked' : ''}> Tenho menos de 18 anos</label></div></div>
-      <div class="campo oculto" id="blocoResp"><p class="cx"><b>Peça para um responsável (pai, mãe ou responsável legal) ler os termos e preencher aqui.</b> A lei exige a autorização dele para enviar a sua foto.</p>
+      <div class="campo oculto" id="blocoResp"><p class="cx"><b>Peça para um responsável (pai, mãe ou responsável legal) ler os termos e preencher aqui.</b> A lei exige a autorização dele para enviar as suas fotos.</p>
         <label for="resp">Nome do responsável</label><input type="text" id="resp" maxlength="60" value="${esc(lembrado.responsavel)}" autocomplete="off"></div>
       <label class="chk"><input type="checkbox" id="cTermos" ${termosOk ? 'checked' : ''}><span>Li e concordo com os <button type="button" class="link" id="verTermos">termos e a privacidade</button>.</span></label>
-      <label class="chk"><input type="checkbox" id="cIA"><span><b>Opcional:</b> autorizo usar minha foto e meu recado no vídeo do ${esc(Album.homenageado)}, montado por inteligência artificial de terceiros (Claude, da Anthropic). <span class="hint">Se não marcar, sua foto e seu recado entram no álbum e ficam fora do vídeo.</span></span></label>
+      <label class="chk"><input type="checkbox" id="cIA"><span><b>Opcional:</b> autorizo usar minhas fotos e meu recado no vídeo do ${esc(Album.homenageado)}, montado por inteligência artificial de terceiros (Claude, da Anthropic). <span class="hint">Se não marcar, suas fotos e seu recado entram no álbum e ficam fora do vídeo.</span></span></label>
       <p class="erro oculto" id="erro" role="alert"></p>
       <input type="text" id="site" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">
     </form>`}
   </main>
   ${Album.envioAberto ? `<div class="barra"><div class="in"><button class="btn amarelo" id="enviar" data-som="none">Enviar para o ${esc(Album.homenageado)}</button></div></div>` : ''}`;
   if (!Album.envioAberto) return;
-  fotoEscolhida = null;
+  fotos.forEach(x => URL.revokeObjectURL(x.url)); fotos = []; preparando = false; recadoJaFoi = false;
+  pintarFotos();
   const det = $('#musica');
   det.addEventListener('toggle', () => {
     if (det.open && !$('#musicaIframe')) {      // só carrega o Spotify quando a pessoa abre
@@ -333,15 +363,25 @@ function telaConvidado() {
   $('#verTermos').onclick = abrirTermos;
   $('#areaFoto').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#arq').click(); } };
   $('#arq').onchange = async e => {
-    const f = e.target.files[0]; if (!f) return;
-    try {
-      const img = await carregarImg(f);
-      const full = await reduzir(img, CONFIG.MAX_LADO, .86), mini = await reduzir(img, CONFIG.MAX_LADO_MINI, .78);
-      if (fotoEscolhida && fotoEscolhida.url) URL.revokeObjectURL(fotoEscolhida.url);
-      fotoEscolhida = { full, mini, url: URL.createObjectURL(full.blob) };
-      $('#fotoTxt').innerHTML = `<span class="pola"><img src="${fotoEscolhida.url}" alt="Foto escolhida"></span><small>Toque para trocar</small>`;
-      erro(''); Som.tocar('pick');
-    } catch (err) { erro(err.message); }
+    const escolhidos = [...e.target.files]; e.target.value = '';       // deixa escolher o mesmo arquivo de novo
+    if (!escolhidos.length) return;
+    const assin = f => [f.name, f.size, f.lastModified].join('|');
+    const novos = escolhidos.filter((f, i) => !fotos.some(x => x.sig === assin(f)) && escolhidos.findIndex(g => assin(g) === assin(f)) === i);
+    const cabem = novos.slice(0, Math.max(0, MAX_FOTOS - fotos.length));
+    let falhou = '';
+    erro(''); preparando = true; $('#enviar').disabled = true; pintarFotos();
+    for (const f of cabem) {
+      try {
+        const img = await carregarImg(f);
+        const full = await reduzir(img, CONFIG.MAX_LADO, .86), mini = await reduzir(img, CONFIG.MAX_LADO_MINI, .78);
+        fotos.push({ chave: novaChave(), sig: assin(f), full, mini, url: URL.createObjectURL(full.blob), enviada: false });
+        pintarFotos();
+      } catch (err) { falhou = err.message; }
+    }
+    preparando = false; $('#enviar').disabled = false; pintarFotos();
+    if (cabem.length && fotos.length) Som.tocar('pick');
+    if (falhou) erro(falhou);
+    else if (novos.length > cabem.length) erro(`Cabem ${MAX_FOTOS} fotos por envio. As primeiras foram adicionadas; mande o resto depois.`);
   };
   $('#enviar').onclick = enviar;
 }
@@ -351,36 +391,50 @@ async function enviar() {
   const nome = $('#nome').value.trim(), recado = $('#recado').value.trim();
   const idade = (document.querySelector('input[name=idade]:checked') || {}).value;
   const resp = $('#resp').value.trim();
+  if (preparando) return erro('Aguarde um instante, ainda estou preparando as fotos.');
   if (nome.length < 2) return erro('Escreva seu nome.');
-  if (!fotoEscolhida) return erro('Escolha uma foto.');
-  if (!recado) return erro('Escreva um recado.');
+  if (!fotos.length) return erro('Escolha pelo menos uma foto.');
+  if (!recado && !recadoJaFoi) return erro('Escreva um recado.');
   if (!idade) return erro('Diga se você tem 18 anos ou mais.');
   if (idade === 'menor' && resp.length < 3) return erro('Para menores de 18 anos, escreva o nome do responsável.');
   if (!$('#cTermos').checked) return erro('Para enviar, marque que leu e concorda com os termos.');
   if (!configurado()) return erro('O álbum ainda não está ligado ao servidor.');
-  const btn = $('#enviar'); btn.disabled = true; btn.textContent = 'Enviando…'; erro(''); Som.tocar('envia');
+  const btn = $('#enviar'); btn.disabled = true; btn.dataset.ocupado = '1'; erro(''); Som.tocar('envia');
+  document.querySelectorAll('[data-rem]').forEach(b => b.disabled = true);
+  window.onbeforeunload = e => { e.preventDefault(); e.returnValue = ''; };
+  const total = fotos.length;
+  let feitas = fotos.filter(x => x.enviada).length;
   try {
     const aceiteT = store.get('termos', null);
     const aceite = (aceiteT && aceiteT.v === CONFIG.TERMOS_VERSAO) ? aceiteT : { v: CONFIG.TERMOS_VERSAO, t: Date.now() };
     store.set('termos', aceite);
     store.set('quem', { nome, menor: idade === 'menor', responsavel: idade === 'menor' ? resp : '' });
-    await apiPostRetry({
-      acao: 'enviar', dispositivo: idAparelho(), aceite, chave: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-      nome, recado, menor: idade === 'menor', responsavel: idade === 'menor' ? resp : '', autorizaIA: $('#cIA').checked,
-      mime: 'image/jpeg', w: fotoEscolhida.full.w, h: fotoEscolhida.full.h,
-      dados: await base64(fotoEscolhida.full.blob), mini: await base64(fotoEscolhida.mini.blob), site: $('#site').value
-    });
-    telaEnviado();
+    for (const x of fotos.filter(f => !f.enviada)) {
+      btn.textContent = `Enviando ${feitas + 1} de ${total}…`; pintarFotos(x);
+      await apiPostRetry({
+        acao: 'enviar', dispositivo: idAparelho(), aceite, chave: x.chave,
+        nome, recado: recadoJaFoi ? '' : recado,                       // o recado vai junto com a primeira foto; as outras só levam o nome
+        menor: idade === 'menor', responsavel: idade === 'menor' ? resp : '', autorizaIA: $('#cIA').checked,
+        mime: 'image/jpeg', w: x.full.w, h: x.full.h,
+        dados: await base64(x.full.blob), mini: await base64(x.mini.blob), site: $('#site').value
+      });
+      x.enviada = true; feitas++; recadoJaFoi = true;
+    }
+    window.onbeforeunload = null; delete btn.dataset.ocupado;
+    telaEnviado(feitas);
   } catch (err) {
-    btn.disabled = false; btn.textContent = 'Enviar para o ' + Album.homenageado;
-    erro(err.tentarDeNovo || err instanceof TypeError ? 'Sem conexão no momento. Confira a internet e toque em Enviar de novo.' : err.message);
+    window.onbeforeunload = null; delete btn.dataset.ocupado;
+    btn.disabled = false; pintarFotos();
+    document.querySelectorAll('[data-rem]').forEach(b => b.disabled = false);
+    const msg = err.tentarDeNovo || err instanceof TypeError ? 'Sem conexão no momento. Confira a internet.' : err.message;
+    erro(feitas ? `Enviamos ${feitas} de ${total} fotos. ${msg} Toque em Enviar para mandar as que faltam.` : (err.tentarDeNovo || err instanceof TypeError ? msg + ' Toque em Enviar de novo.' : msg));
   }
 }
-function telaEnviado() {
+function telaEnviado(n = 1) {
   $('#app').innerHTML = `
   <header class="topo"><div class="in"><span class="sel">Álbum de recados</span><h1>Enviado!</h1><p>Seu recado vai direto para quem organizou.</p></div></header>
   <main><div class="card ok"><svg class="check" viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="44" r="42"/><path d="M26 45l12 12 24-26"/></svg><div class="big">Valeu, ${esc((store.get('quem', {}).nome || '').split(' ')[0] || 'amigo')}!</div>
-  <p>O ${esc(Album.homenageado)} vai ver o que você mandou.</p><p><button class="btn" id="outra">Enviar outra foto</button></p></div></main>`;
+  <p>${n > 1 ? `Suas ${n} fotos e seu recado foram enviados.` : 'Sua foto e seu recado foram enviados.'} O ${esc(Album.homenageado)} vai ver o que você mandou.</p><p><button class="btn" id="outra">Enviar mais fotos</button></p></div></main>`;
   $('#outra').onclick = telaConvidado;
   Som.tocar('ok'); confete();
 }
@@ -414,12 +468,12 @@ async function telaAlbum() {
 }
 function desenharDono() {
   const f = Dono.fotos, nIA = f.filter(x => x.ia).length;
-  $('#resumo').textContent = f.length ? `${f.length} ${f.length === 1 ? 'recado' : 'recados'} · ${nIA} no vídeo · ${f.length - nIA} fora do vídeo` : 'Ainda não chegou nenhum recado.';
+  $('#resumo').textContent = f.length ? `${f.length} ${f.length === 1 ? 'foto' : 'fotos'} · ${nIA} no vídeo · ${f.length - nIA} fora do vídeo` : 'Ainda não chegou nenhuma foto.';
   $('#corpo').innerHTML = `
   ${f.length ? `<div class="acoes"><button class="btn" id="bTodas">Baixar tudo (ZIP)</button><button class="btn sec" id="bVideo" ${nIA ? '' : 'disabled'}>Baixar só os do vídeo (ZIP)</button><button class="btn sec" id="sair">Sair</button></div>
   <div class="prog oculto" id="prog"><i></i></div><p class="hint oculto" id="progTx"></p>` : `<div class="acoes"><button class="btn sec" id="sair">Sair</button></div>`}
   <div class="grade">${f.map(x => `<article class="item" data-id="${esc(x.id)}"><div class="img" data-img="${esc(x.id)}">${Dono.minis[x.id] ? `<img alt="Foto de ${esc(x.nome)}" src="${Dono.minis[x.id]}">` : 'carregando…'}</div>
-    <div class="tx"><div class="nome">${esc(x.nome)}</div><p class="rec">${esc(x.recado)}</p></div>
+    <div class="tx"><div class="nome">${esc(x.nome)}</div><p class="rec">${x.recado ? esc(x.recado) : '<i>Sem recado nesta foto (veja as outras fotos deste amigo).</i>'}</p></div>
     <div class="rod"><span class="tag ${x.ia ? 's' : 'n'}">${x.ia ? 'No vídeo' : 'Fora do vídeo'}</span>${x.menor ? `<span class="tag n" title="Responsável: ${esc(x.responsavel)}">Menor de 18</span>` : ''}
       <button class="btn sec peq" data-baixar="${esc(x.id)}">Baixar</button><button class="btn sec peq" data-apagar="${esc(x.id)}" data-som="none">Apagar</button></div></article>`).join('')}</div>
   <p class="hint" style="margin-top:18px">As fotos ficam disponíveis até ${esc(Dono.acessoAte.split('-').reverse().join('/'))} e depois são apagadas. Baixe antes dessa data.</p>`;
@@ -464,7 +518,7 @@ async function baixarZip(soVideo) {
       const r = await chamar({ acao: 'foto', id: f.id });
       const nome = String(i + 1).padStart(2, '0') + ' - ' + slug(f.nome) + '.jpg';
       arquivos.push({ nome, dados: u8doB64(r.dados) });
-      linhas.push(`${nome}\nDe: ${f.nome}\nRecado: ${f.recado}\n`);
+      linhas.push(`${nome}\nDe: ${f.nome}\nRecado: ${f.recado || '(sem recado nesta foto)'}\n`);
     }
     arquivos.push({ nome: 'recados.txt', dados: new TextEncoder().encode(linhas.join('\n')) });
     prog.firstElementChild.style.width = '100%'; tx.textContent = 'Pronto! Baixando…'; Som.tocar('pronto');
