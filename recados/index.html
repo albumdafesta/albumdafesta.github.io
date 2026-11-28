@@ -329,25 +329,44 @@ const ICO_CAM = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" f
 const ICO_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 const novaChave = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const rotuloEnviar = () => { const n = fotos.filter(x => !x.enviada).length || fotos.length; return n > 1 ? `Enviar ${n} fotos para o ${Album.homenageado}` : `Enviar para o ${Album.homenageado}`; };
-function pintarFotos(atual) {
+function criarElFoto(x, i) {
+  const el = document.createElement('div'); el.className = 'fi' + (x.enviada ? ' feita' : ''); el.dataset.idx = i;
+  el.innerHTML = `<img alt=”Foto ${i + 1}” src=”${x.url}”><input type=”text” class=”leg” maxlength=”80” placeholder=”Legenda (opcional)” aria-label=”Legenda da foto ${i + 1}” value=”${esc(x.legenda || '')}” ${x.enviada ? 'disabled' : ''}><button type=”button” class=”rem” aria-label=”Remover foto ${i + 1}”>${ICO_X}</button>`;
+  el.querySelector('.leg').oninput = e => { x.legenda = e.target.value; };
+  el.querySelector('.rem').onclick = () => { if (x.enviada) return; URL.revokeObjectURL(x.url); fotos.splice(fotos.indexOf(x), 1); pintarFotos(); Som.tocar('tick'); erro(''); };
+  return el;
+}
+function appendFoto(x) {
+  const grade = $('#gradeEnv'); if (!grade) return;
+  const i = fotos.indexOf(x);
+  grade.appendChild(criarElFoto(x, i));
+  atualizarContadores();
+}
+function atualizarContadores() {
   const area = $('#areaFoto'), vazio = !fotos.length;
   area.classList.toggle('cheia', !vazio);
   $('#fotoTxt').innerHTML = vazio
     ? `${ICO_CAM}<b>Toque para escolher fotos</b><small>Pode escolher várias de uma vez (até ${MAX_FOTOS} por envio), da galeria ou da câmera</small>`
-    : `${ICO_CAM}<span class="tx2"><b>${preparando ? 'Preparando…' : 'Adicionar mais fotos'}</b></span>`;
-  $('#gradeEnv').innerHTML = fotos.map((x, i) => `<div class="fi${x.enviada ? ' feita' : ''}${x === atual ? ' atual' : ''}"><img alt="Foto ${i + 1}" src="${x.url}"><input type="text" class="leg" maxlength="80" data-leg="${i}" placeholder="Legenda (opcional)" aria-label="Legenda da foto ${i + 1}" value="${esc(x.legenda || '')}" ${x.enviada ? 'disabled' : ''}><button type="button" class="rem" data-rem="${i}" aria-label="Remover foto ${i + 1}">${ICO_X}</button></div>`).join('');
-  document.querySelectorAll('[data-leg]').forEach(inp => inp.oninput = () => { const x = fotos[+inp.dataset.leg]; if (x) x.legenda = inp.value; });
-  document.querySelectorAll('[data-rem]').forEach(b => b.onclick = () => { const x = fotos[+b.dataset.rem]; if (!x || x.enviada) return; URL.revokeObjectURL(x.url); fotos.splice(+b.dataset.rem, 1); pintarFotos(); Som.tocar('tick'); erro(''); });
+    : `${ICO_CAM}<span class=”tx2”><b>${preparando ? 'Preparando…' : 'Adicionar mais fotos'}</b></span>`;
   const c = $('#contFotos'); c.classList.toggle('oculto', vazio); c.textContent = `${fotos.length} de ${MAX_FOTOS} fotos · a legenda é opcional`;
-  const sb = $('#sobrasBox');
+  const b = $('#enviar'); if (b && !b.dataset.ocupado) b.textContent = rotuloEnviar();
+}
+function pintarSobras() {
+  const sb = $('#sobrasBox'); if (!sb) return;
   sobras.forEach(f => { if (!urlSobra.has(f)) urlSobra.set(f, URL.createObjectURL(f)); });
   const livres = MAX_FOTOS - fotos.length;
   sb.classList.toggle('oculto', !sobras.length);
   sb.innerHTML = sobras.length ? `<b>${sobras.length === 1 ? '1 foto ficou' : sobras.length + ' fotos ficaram'} de fora.</b> Cabem ${MAX_FOTOS} fotos por envio, então ${sobras.length === 1 ? 'ela não entrou' : 'elas não entraram'} agora. Nada se perdeu: ${livres > 0 ? 'toque abaixo para colocar' : 'depois de enviar, toque em “Enviar as que ficaram de fora”'}.
-    <div class="grade-env">${sobras.map(f => `<div class="mini"><img alt="Foto que ficou de fora" src="${urlSobra.get(f)}"></div>`).join('')}</div>
-    ${livres > 0 ? `<button type="button" class="btn sec peq" id="bSobras">Adicionar ${Math.min(livres, sobras.length)} aqui</button>` : ''}` : '';
+    <div class=”grade-env”>${sobras.map(f => `<div class=”mini”><img alt=”Foto que ficou de fora” src=”${urlSobra.get(f)}”></div>`).join('')}</div>
+    ${livres > 0 ? `<button type=”button” class=”btn sec peq” id=”bSobras”>Adicionar ${Math.min(livres, sobras.length)} aqui</button>` : ''}` : '';
   if ($('#bSobras')) $('#bSobras').onclick = () => adicionarArquivos(sobras.splice(0));
-  const b = $('#enviar'); if (b && !b.dataset.ocupado) b.textContent = rotuloEnviar();
+}
+function pintarFotos(atual) {
+  const grade = $('#gradeEnv'); if (!grade) return;
+  grade.innerHTML = '';
+  fotos.forEach((x, i) => { const el = criarElFoto(x, i); if (x === atual) el.classList.add('atual'); grade.appendChild(el); });
+  atualizarContadores();
+  pintarSobras();
 }
 function telaConvidado(usarSobras) {
   const lembrado = store.get('quem', { nome: '', menor: null, responsavel: '' });
@@ -414,16 +433,17 @@ async function adicionarArquivos(escolhidos) {
   const livres = Math.max(0, MAX_FOTOS - fotos.length), cabem = novos.slice(0, livres), fora = novos.slice(livres);
   fora.forEach(f => { if (!sobras.some(x => assinatura(x) === assinatura(f))) sobras.push(f); });
   let falhou = '';
-  erro(''); preparando = true; $('#enviar').disabled = true; pintarFotos();
+  erro(''); preparando = true; $('#enviar').disabled = true; atualizarContadores();
   for (const f of cabem) {
     try {
       const img = await carregarImg(f);
       const full = await reduzir(img, CONFIG.MAX_LADO, .86), mini = await reduzir(img, CONFIG.MAX_LADO_MINI, .78);
-      fotos.push({ chave: novaChave(), sig: assinatura(f), full, mini, url: URL.createObjectURL(full.blob), enviada: false });
-      pintarFotos();
+      const foto = { chave: novaChave(), sig: assinatura(f), full, mini, url: URL.createObjectURL(full.blob), enviada: false };
+      fotos.push(foto);
+      appendFoto(foto);
     } catch (err) { falhou = err.message; }
   }
-  preparando = false; $('#enviar').disabled = false; pintarFotos();
+  preparando = false; $('#enviar').disabled = false; atualizarContadores(); pintarSobras();
   if (cabem.length && fotos.length) Som.tocar('pick');
   if (falhou) erro(falhou);
   else if (repetidas) erro(`${repetidas === 1 ? '1 foto já estava' : repetidas + ' fotos já estavam'} na lista ou já ${repetidas === 1 ? 'foi enviada' : 'foram enviadas'}, então ${repetidas === 1 ? 'não entrou' : 'não entraram'} de novo.`);
